@@ -157,6 +157,7 @@ def get_partition_state_tuples(context, catalog_schema, partition_info):
         (schema_schema, partition_name, modcount)
     """
     partition_list = list()
+    missing_partition_list = list()
 
     dburl = dbconn.DbURL(port=context.master_port, dbname=context.target_db)
     num_sqls = 0
@@ -165,9 +166,12 @@ def get_partition_state_tuples(context, catalog_schema, partition_info):
             try:
                 modcount_sql = "select to_char(coalesce(sum(modcount::bigint), 0), '999999999999999999999') from %s.%s" % (catalog_schema, tupletable)
                 modcount = execSQLForSingleton(conn, modcount_sql)
-            except Exception, e:
-                logger.warn("Table %s (%s.%s) no longer exists", tupletable, schemaname, partition_name)
-                partition_list.append((schemaname, partition_name, -1))
+            except Exception as e:
+                if "does not exist" in str(e):
+                    logger.debug("Table %s.%s (%s) no longer exists", schemaname, partition_name, tupletable)
+                    missing_partition_list.append((schemaname, partition_name))
+                else:
+                    logger.error(str(e))
             else:
                 num_sqls += 1
                 if num_sqls == 1000: # The choice of batch size was chosen arbitrarily
@@ -179,7 +183,7 @@ def get_partition_state_tuples(context, catalog_schema, partition_info):
                 validate_modcount(schemaname, partition_name, modcount)
                 partition_list.append((schemaname, partition_name, modcount))
 
-    return partition_list
+    return partition_list, missing_partition_list
 
 def get_partition_state(context, catalog_schema, partition_info):
     """
