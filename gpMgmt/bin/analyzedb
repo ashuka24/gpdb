@@ -294,6 +294,11 @@ class AnalyzeDb(Operation):
             # curr_ao_state contains the number of DML commands that have been executed on an AO table
             # curr_last_op contains the timestamp of the last DDL command (CREATE, ALTER, TRUNCATE, DROP) of an AO table
             curr_ao_state = self._get_ao_state(input_tables_set)  # (('schema', 'table', modcount), ...)
+            old_table_set = input_tables_set
+            logger.debug(old_table_set)
+            deleted_tables_set = set()
+            self._remove_deleted_tables(curr_ao_state, input_tables_set, deleted_tables_set);
+            logger.debug(input_tables_set)
             curr_last_op = self._get_lastop_state(
                 input_tables_set)  # e.g. ['public,ao_tab,67468,ALTER,ADD COLUMN,2014-10-15 14:49:27.658777-07', ...]
 
@@ -344,6 +349,23 @@ class AnalyzeDb(Operation):
                 logger.info(target)
                 target_list.append(target)
             logger.info("---------------------------------------------------")
+
+            if len(deleted_tables_set) > 0:
+                target_list = []
+                logger.info("---------------------------------------------------")
+                logger.info("Tables or partitions that were dropped while analyzedb was running")
+                logger.info("---------------------------------------------------")
+                for can in deleted_tables_set:
+                    can_schema = can[0]
+                    can_table = can[1]
+                    if can in deleted_tables_set:
+                        target = self._get_tablename_with_cols(can_schema, can_table, input_col_dict)
+                    else:  # can in root_partition_col_dict
+                        target = self._get_tablename_with_cols(can_schema, can_table, root_partition_col_dict)
+                    logger.info(target)
+                    target_list.append(target)
+                logger.info("---------------------------------------------------")
+
 
             if self.dry_run:
                 return 0
@@ -584,6 +606,16 @@ class AnalyzeDb(Operation):
         oid_str = construct_oid_subquery_str(input_tables_set)
         ao_partition_info = run_sql(self.conn, GET_REQUESTED_AO_DATA_TABLE_INFO_SQL % oid_str)
         return get_partition_state_tuples(self.context, 'pg_aoseg', ao_partition_info)
+
+    def _remove_deleted_tables(self, curr_ao_state, input_tables_set, deleted_tables_set):
+        logger.debug("removing deleted tables...")
+        logger.debug(curr_ao_state)
+        for table in curr_ao_state:
+            table_key = (table[0], table[1])   
+            if table[2] == -1:
+                logger.warn("Table %s.%s was deleted while analyzedb was running...", table[0], table[1])
+                deleted_tables_set.add(table_key)
+                input_tables_set.remove(table_key)
 
     def _get_lastop_state(self, input_tables_set):
         # oid, action, subtype, timestamp
