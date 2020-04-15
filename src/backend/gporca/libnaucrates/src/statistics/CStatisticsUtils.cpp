@@ -932,7 +932,6 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 	GPOS_ASSERT(NULL != col_histogram_mapping);
 	GPOS_ASSERT(NULL != disj_preds_histogram_map);
 
-	BOOL is_empty = (CStatistics::Epsilon >= num_rows_disj_child);
 	CDouble output_rows(CStatistics::MinRows.Get());
 
 	UlongToHistogramMap *merged_histogram = GPOS_NEW(mp) UlongToHistogramMap(mp);
@@ -948,10 +947,8 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 		{
 			// take the updatable cols from the child as long as it is not empty
 			// add it to the merged histograms
-			if (!is_empty)
-			{
-				AddHistogram(mp, disj_child_colid, disj_child_histogram, merged_histogram);
-			}
+			AddHistogram(mp, disj_child_colid, disj_child_histogram, merged_histogram);
+
 		}
 		GPOS_CHECK_ABORT;
 	}
