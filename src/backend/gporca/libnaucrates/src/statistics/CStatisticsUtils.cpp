@@ -922,8 +922,8 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 	(
 	CMemoryPool *mp,
 	CBitSet *non_updatable_cols,
-	UlongToHistogramMap *col_histogram_mapping,
-	UlongToHistogramMap *disj_preds_histogram_map,
+	UlongToHistogramMap *col_histogram_mapping, //base histograms
+	UlongToHistogramMap *disj_preds_histogram_map, //child histograms
 	CDouble cumulative_rows,
 	CDouble num_rows_disj_child
 	)
@@ -946,19 +946,11 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 		const CHistogram *disj_child_histogram = disj_hist_iter.Value();
 		if (!non_updatable_cols->Get(disj_child_colid))
 		{
+			// take the updatable cols from the child as long as it is not empty
+			// add it to the merged histograms
 			if (!is_empty)
 			{
 				AddHistogram(mp, disj_child_colid, disj_child_histogram, merged_histogram);
-			}
-			else
-			{
-				// add a dummy statistics object since the estimated number of rows for
-				// disjunction child is "0"
-				merged_histogram->Insert
-									(
-									GPOS_NEW(mp) ULONG(disj_child_colid),
-									 GPOS_NEW(mp) CHistogram(mp, false /* is_well_defined */)
-									);
 			}
 		}
 		GPOS_CHECK_ABORT;
@@ -973,41 +965,25 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 		const CHistogram *histogram = col_hist_mapping_iter.Value();
 		if (NULL != histogram && !non_updatable_cols->Get(colid))
 		{
-			if (is_empty)
-			{
-				// since the estimated output of the disjunction child is "0" tuples
-				// no point merging histograms.
-				AddHistogram
-					(
-					mp,
-					colid,
-					histogram,
-					merged_histogram,
-					true /* replace_old */
-					);
-			}
-			else
-			{
-				const CHistogram *disj_child_histogram = disj_preds_histogram_map->Find(&colid);
-				CHistogram *normalized_union_histogram = histogram->MakeUnionHistogramNormalize
-													(
-													cumulative_rows,
-													disj_child_histogram,
-													num_rows_disj_child,
-													&output_rows
-													);
+			const CHistogram *disj_child_histogram = disj_preds_histogram_map->Find(&colid);
+			CHistogram *normalized_union_histogram = histogram->MakeUnionHistogramNormalize
+												(
+												cumulative_rows,
+												disj_child_histogram,
+												num_rows_disj_child,
+												&output_rows
+												);
 
-				AddHistogram
-					(
-					mp,
-					colid,
-					normalized_union_histogram,
-					merged_histogram,
-					true /* fReplaceOld */
-					);
+			AddHistogram
+				(
+				mp,
+				colid,
+				normalized_union_histogram,
+				merged_histogram,
+				true /* fReplaceOld */
+				);
 
-				GPOS_DELETE(normalized_union_histogram);
-			}
+			GPOS_DELETE(normalized_union_histogram);
 
 			GPOS_CHECK_ABORT;
 		}

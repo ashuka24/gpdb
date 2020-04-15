@@ -646,17 +646,22 @@ CFilterStatsProcessor::MakeHistHashMapDisjFilter
 			GPOS_ASSERT(NULL == disjunctive_child_col_histogram);
 
 			CDouble current_rows_estimate = input_rows / CScaleFactorUtils::CalcScaleFactorCumulativeDisj(stats_config, scale_factors, input_rows);
-			UlongToHistogramMap *merged_histograms = CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
-													  	  (
-													  	  mp,
-													  	  non_updatable_cols,
-													  	  disjunctive_result_histograms,
-													  	  child_histograms,
-													  	  current_rows_estimate,
-													  	  num_rows_disj_child
-													  	  );
-			disjunctive_result_histograms->Release();
-			disjunctive_result_histograms = merged_histograms;
+
+			// short circuit: no need to merge histograms if the estimated number of rows for the child is 0
+			if (CStatistics::Epsilon < num_rows_disj_child)
+			{
+				UlongToHistogramMap *merged_histograms = CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
+															  (
+															  mp,
+															  non_updatable_cols,
+															  disjunctive_result_histograms,
+															  child_histograms,
+															  current_rows_estimate,
+															  num_rows_disj_child
+															  );
+				disjunctive_result_histograms->Release();
+				disjunctive_result_histograms = merged_histograms;
+			}
 
 			previous_histogram = NULL;
 			previous_scale_factor = child_scale_factor;
