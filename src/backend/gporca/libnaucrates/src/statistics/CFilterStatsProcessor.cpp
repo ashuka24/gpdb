@@ -631,7 +631,7 @@ CFilterStatsProcessor::MakeHistHashMapDisjFilter
 			// short circuit: no need to merge histograms if the estimated number of rows for the child is 0
 			if (CStatistics::Epsilon < num_rows_disj_child)
 			{
-				UlongToHistogramMap *merged_histograms = CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
+				UlongToHistogramMap *merged_histograms = CStatisticsUtils::MergeHistHashMaps
 															  (
 															  mp,
 															  non_updatable_cols,

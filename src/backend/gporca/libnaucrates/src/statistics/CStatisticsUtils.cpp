@@ -918,19 +918,19 @@ CStatisticsUtils::PrintHistogramMap
 //
 //---------------------------------------------------------------------------
 UlongToHistogramMap *
-CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
+CStatisticsUtils::MergeHistHashMaps
 	(
 	CMemoryPool *mp,
 	CBitSet *non_updatable_cols,
-	UlongToHistogramMap *col_histogram_mapping, //base histograms
-	UlongToHistogramMap *disj_preds_histogram_map, //child histograms
+	UlongToHistogramMap *histograpm_map_1,
+	UlongToHistogramMap *histogram_map_2,
 	CDouble cumulative_rows,
 	CDouble num_rows_disj_child
 	)
 {
 	GPOS_ASSERT(NULL != non_updatable_cols);
-	GPOS_ASSERT(NULL != col_histogram_mapping);
-	GPOS_ASSERT(NULL != disj_preds_histogram_map);
+	GPOS_ASSERT(NULL != histograpm_map_1);
+	GPOS_ASSERT(NULL != histogram_map_2);
 
 	CDouble output_rows(CStatistics::MinRows.Get());
 
@@ -938,11 +938,11 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 
 	// iterate over the new hash map of histograms and only add
 	// histograms of columns whose output statistics can be updated
-	UlongToHistogramMapIter disj_hist_iter(disj_preds_histogram_map);
-	while (disj_hist_iter.Advance())
+	UlongToHistogramMapIter hist_2_iter(histogram_map_2);
+	while (hist_2_iter.Advance())
 	{
-		ULONG disj_child_colid = *(disj_hist_iter.Key());
-		const CHistogram *disj_child_histogram = disj_hist_iter.Value();
+		ULONG disj_child_colid = *(hist_2_iter.Key());
+		const CHistogram *disj_child_histogram = hist_2_iter.Value();
 		if (!non_updatable_cols->Get(disj_child_colid))
 		{
 			// take the updatable cols from the child as long as it is not empty
@@ -955,14 +955,14 @@ CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
 
 	// iterate over the previously generated histograms and
 	// union them with newly created hash map of histograms (if these columns are updatable)
-	UlongToHistogramMapIter col_hist_mapping_iter(col_histogram_mapping);
-	while (col_hist_mapping_iter.Advance())
+	UlongToHistogramMapIter hist_1_iter(histograpm_map_1);
+	while (hist_1_iter.Advance())
 	{
-		ULONG colid = *(col_hist_mapping_iter.Key());
-		const CHistogram *histogram = col_hist_mapping_iter.Value();
+		ULONG colid = *(hist_1_iter.Key());
+		const CHistogram *histogram = hist_1_iter.Value();
 		if (NULL != histogram && !non_updatable_cols->Get(colid))
 		{
-			const CHistogram *disj_child_histogram = disj_preds_histogram_map->Find(&colid);
+			const CHistogram *disj_child_histogram = histogram_map_2->Find(&colid);
 			CHistogram *normalized_union_histogram = histogram->MakeUnionHistogramNormalize
 												(
 												cumulative_rows,
