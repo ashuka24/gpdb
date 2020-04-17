@@ -955,36 +955,25 @@ CStatisticsUtils::MergeHistogramMapsForDisjPreds
 
 	// iterate over the previously generated histograms and
 	// union them with newly created hash map of histograms (if these columns are updatable)
-	UlongToHistogramMapIter hmap1_iter(hmap1);
-	while (hmap1_iter.Advance())
+	if (CStatistics::Epsilon <= rows1)
 	{
-		ULONG colid = *(hmap1_iter.Key());
-		const CHistogram *histogram1 = hmap1_iter.Value();
-		if (NULL != histogram1 && !non_updatable_cols->Get(colid))
+		UlongToHistogramMapIter hmap1_iter(hmap1);
+		while (hmap1_iter.Advance())
 		{
+			ULONG colid = *(hmap1_iter.Key());
+			const CHistogram *histogram1 = hmap1_iter.Value();
+			if (NULL != histogram1 && !non_updatable_cols->Get(colid))
 			{
 				const CHistogram *histogram2 = hmap2->Find(&colid);
-				CHistogram *normalized_union_histogram = histogram1->MakeUnionHistogramNormalize
-													(
-													rows1,
-													histogram2,
-													rows2,
-													&output_rows
-													);
+				CHistogram *normalized_union_histogram =
+					histogram1->MakeUnionHistogramNormalize(rows1, histogram2, rows2, &output_rows);
 
-				AddHistogram
-					(
-					mp,
-					colid,
-					normalized_union_histogram,
-					merged_hmap,
-					true /* fReplaceOld */
-					);
+				AddHistogram(mp, colid, normalized_union_histogram, merged_hmap, true /* fReplaceOld */);
 
 				GPOS_DELETE(normalized_union_histogram);
-			}
 
-			GPOS_CHECK_ABORT;
+				GPOS_CHECK_ABORT;
+			}
 		}
 	}
 
