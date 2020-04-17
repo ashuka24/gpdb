@@ -938,7 +938,7 @@ CStatisticsUtils::MergeHistogramMapsForDisjPreds
 
 	// iterate over the new hash map of histograms and only add
 	// histograms of columns whose output statistics can be updated
-	if (CStatistics::Epsilon <= rows2)
+	if (rows2 > CStatistics::Epsilon)
 	{
 		UlongToHistogramMapIter hmap2_iter(hmap2);
 		while (hmap2_iter.Advance())
@@ -955,7 +955,7 @@ CStatisticsUtils::MergeHistogramMapsForDisjPreds
 
 	// iterate over the previously generated histograms and
 	// union them with newly created hash map of histograms (if these columns are updatable)
-	if (CStatistics::Epsilon <= rows1)
+	if (rows1 > CStatistics::Epsilon)
 	{
 		UlongToHistogramMapIter hmap1_iter(hmap1);
 		while (hmap1_iter.Advance())
