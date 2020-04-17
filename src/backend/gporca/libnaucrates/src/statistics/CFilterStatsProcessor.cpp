@@ -627,7 +627,7 @@ CFilterStatsProcessor::MakeHistHashMapDisjFilter
 			GPOS_ASSERT(NULL == disjunctive_child_col_histogram);
 
 			CDouble current_rows_estimate = input_rows / CScaleFactorUtils::CalcScaleFactorCumulativeDisj(stats_config, scale_factors, input_rows);
-			UlongToHistogramMap *merged_histograms = CStatisticsUtils::CreateHistHashMapAfterMergingDisjPreds
+			UlongToHistogramMap *merged_histograms = CStatisticsUtils::MergeHistogramMapsForDisjPreds
 													  	  (
 													  	  mp,
 													  	  non_updatable_cols,
