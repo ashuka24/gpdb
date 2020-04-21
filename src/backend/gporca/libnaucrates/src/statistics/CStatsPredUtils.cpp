@@ -30,6 +30,7 @@
 #include "naucrates/statistics/CStatistics.h"
 #include "naucrates/statistics/CStatsPredDisj.h"
 #include "naucrates/statistics/CStatsPredConj.h"
+#include "naucrates/statistics/CStatsPredArrayCmp.h"
 
 using namespace gpopt;
 using namespace gpmd;
@@ -994,6 +995,30 @@ CStatsPredUtils::ProcessArrayCmp
 	}
 
 	BOOL is_array_cmp_any = (CScalarArrayCmp::EarrcmpAny == scalar_array_cmp_op->Earrcmpt());
+
+	if (stats_cmp_type == CStatsPred::EstatscmptEq && is_array_cmp_any)
+	{
+		IDatumArray *datums = GPOS_NEW(mp) IDatumArray(mp);
+
+		for (ULONG ul = 0; ul < constants; ul++)
+		{
+			CExpression *expr_const = CUtils::PScalarArrayExprChildAt(mp, expr_scalar_array, ul);
+
+			if (COperator::EopScalarConst == expr_const->Pop()->Eopid())
+			{
+				CScalarConst *scalar_const_op = CScalarConst::PopConvert(expr_const->Pop());
+				IDatum *datum_literal = scalar_const_op->GetDatum();
+				GPOS_ASSERT(datum_literal->StatsAreComparable(datum_literal)); // Can we actually assert this here?
+				datums->Append(datum_literal);
+			}
+		}
+
+		CStatsPred *pred_stats = GPOS_NEW(mp) CStatsPredArrayCmp(col_ref->Id(), stats_cmp_type, datums);
+		pred_stats_array->Append(pred_stats);
+
+		return;
+	}
+
 	if (is_array_cmp_any)
 	{
 		pred_stats_child_array = GPOS_NEW(mp) CStatsPredPtrArry(mp);

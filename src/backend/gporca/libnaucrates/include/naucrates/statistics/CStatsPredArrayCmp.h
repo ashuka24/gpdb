@@ -14,6 +14,7 @@
 #include "gpos/base.h"
 #include "naucrates/md/IMDType.h"
 #include "naucrates/statistics/CStatsPred.h"
+#include "naucrates/base/IDatum.h"
 
 // fwd declarations
 namespace gpopt
@@ -40,19 +41,23 @@ namespace gpnaucrates
 			// comparison type
 			CStatsPred::EStatsCmpType m_stats_cmp_type;
 
+			IDatumArray *m_datums;
+
 		public:
 
 			// ctor
 			CStatsPredArrayCmp
 				(
 				ULONG colid,
-				CStatsPred::EStatsCmpType stats_cmp_type
+				CStatsPred::EStatsCmpType stats_cmp_type,
+				IDatumArray *datums
 				);
 
 			// dtor
 			virtual
 			~CStatsPredArrayCmp()
 			{
+				m_datums->Release();
 			}
 
 			// comparison types for stats computation

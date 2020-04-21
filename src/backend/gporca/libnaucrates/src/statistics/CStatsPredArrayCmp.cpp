@@ -24,12 +24,15 @@ using namespace gpmd;
 CStatsPredArrayCmp::CStatsPredArrayCmp
 	(
 	ULONG colid,
-	CStatsPred::EStatsCmpType stats_cmp_type
+	CStatsPred::EStatsCmpType stats_cmp_type,
+	IDatumArray *datums
 	)
 	:
 	CStatsPred(colid),
-	m_stats_cmp_type(stats_cmp_type)
+	m_stats_cmp_type(stats_cmp_type),
+	m_datums(datums)
 {
+	GPOS_ASSERT(CStatsPred::EstatscmptEq == m_stats_cmp_type);
 }
 
 // EOF
