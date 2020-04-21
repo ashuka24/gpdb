@@ -17,6 +17,7 @@
 #include "naucrates/statistics/CJoinStatsProcessor.h"
 #include "naucrates/statistics/CStatisticsUtils.h"
 #include "naucrates/statistics/CScaleFactorUtils.h"
+#include "naucrates/statistics/CBucket.h"
 
 using namespace gpopt;
 
@@ -404,7 +405,7 @@ CFilterStatsProcessor::MakeHistHashMapConjFilter
 			GPOS_ASSERT(NULL != hist_before);
 
 			CHistogram *result_histogram = NULL;
-			result_histogram = MakeHistSimpleFilter(child_pred_stats, filter_colids, hist_before, &last_scale_factor, &last_colid);
+			result_histogram = MakeHistSimpleFilter(mp, child_pred_stats, filter_colids, hist_before, &last_scale_factor, &last_colid);
 			GPOS_DELETE(hist_before);
 
 			GPOS_ASSERT(NULL != result_histogram);
@@ -567,7 +568,7 @@ CFilterStatsProcessor::MakeHistHashMapDisjFilter
 		if (is_pred_simple)
 		{
 			GPOS_ASSERT(NULL != histogram);
-			disjunctive_child_col_histogram = MakeHistSimpleFilter(child_pred_stats, filter_colids, histogram, &child_scale_factor, &previous_colid);
+			disjunctive_child_col_histogram = MakeHistSimpleFilter(mp, child_pred_stats, filter_colids, histogram, &child_scale_factor, &previous_colid);
 
 			CHistogram *input_histogram = input_histograms->Find(&colid);
 			GPOS_ASSERT(NULL != input_histogram);
@@ -698,6 +699,7 @@ CFilterStatsProcessor::MakeHistHashMapDisjFilter
 CHistogram *
 CFilterStatsProcessor::MakeHistSimpleFilter
 	(
+	CMemoryPool *mp,
 	CStatsPred *pred_stats,
 	CBitSet *filter_colids,
 	CHistogram *hist_before,
@@ -716,6 +718,14 @@ CFilterStatsProcessor::MakeHistSimpleFilter
 		CStatsPredLike *like_pred_stats = CStatsPredLike::ConvertPredStats(pred_stats);
 
 		return MakeHistLikeFilter(like_pred_stats, filter_colids, hist_before, last_scale_factor, target_last_colid);
+	}
+
+	if (CStatsPred::EsptArrayCmp == pred_stats->GetPredStatsType())
+	{
+		CStatsPredArrayCmp *arraycmp_pred_stats = CStatsPredArrayCmp::ConvertPredStats(pred_stats);
+
+		return MakeHistArrayCmpFilter(mp, arraycmp_pred_stats, filter_colids,
+									  hist_before, last_scale_factor, target_last_colid);
 	}
 
 	CStatsPredUnsupported *unsupported_pred_stats = CStatsPredUnsupported::ConvertPredStats(pred_stats);
@@ -810,6 +820,60 @@ CFilterStatsProcessor::MakeHistLikeFilter
 	CHistogram *result_histogram = hist_before->CopyHistogram();
 
 	*last_scale_factor = *last_scale_factor * pred_stats->DefaultScaleFactor();
+	*target_last_colid = colid;
+
+	return result_histogram;
+}
+
+// create a new histograms after applying the point filter
+CHistogram *
+CFilterStatsProcessor::MakeHistArrayCmpFilter
+	(
+	CMemoryPool *mp,
+	CStatsPredArrayCmp *pred_stats,
+	CBitSet *filter_colids,
+	CHistogram *hist_before,
+	CDouble *last_scale_factor,
+	ULONG *target_last_colid
+	)
+{
+	GPOS_ASSERT(NULL != pred_stats);
+	GPOS_ASSERT(NULL != filter_colids);
+	GPOS_ASSERT(NULL != hist_before);
+
+	const ULONG colid = pred_stats->GetColId();
+	GPOS_ASSERT(CHistogram::IsOpSupportedForFilter(pred_stats->GetCmpType()));
+
+	CBucketArray *histogram_buckets = GPOS_NEW(mp) CBucketArray(mp);
+
+	IDatumArray *datums = pred_stats->GetDatums();
+	datums->Sort();
+
+	// TODO: Deduplicate datums along the way!
+	// TODO: What if it's a in (1, 2, NULL)
+	for (ULONG ul = 0; ul < datums->Size(); ++ul)
+	{
+		IDatum *datum = (*datums)[ul];
+		if (datum->IsNull())
+		{
+			continue;
+		}
+		CBucket *bucket = CBucket::MakeBucketSingleton(mp, datum);
+		histogram_buckets->Append(bucket);
+	}
+
+	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
+
+	// note column id
+	(void) filter_colids->ExchangeSet(colid);
+
+	CDouble local_scale_factor(1.0);
+	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
+	local_scale_factor = result_histogram->NormalizeHistogram();
+
+	GPOS_ASSERT(DOUBLE(1.0) <= local_scale_factor.Get());
+
+	*last_scale_factor = *last_scale_factor * local_scale_factor;
 	*target_last_colid = colid;
 
 	return result_histogram;

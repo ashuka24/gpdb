@@ -74,6 +74,12 @@ namespace gpnaucrates
 				return CStatsPred::EsptArrayCmp;
 			}
 
+			virtual
+			IDatumArray *GetDatums() const
+			{
+				return m_datums;
+			}
+
 			// conversion function
 			static
 			CStatsPredArrayCmp *ConvertPredStats
