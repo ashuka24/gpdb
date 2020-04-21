@@ -858,6 +858,7 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		{
 			continue;
 		}
+		datum->AddRef();
 		CBucket *bucket = CBucket::MakeBucketSingleton(mp, datum);
 		histogram_buckets->Append(bucket);
 	}
@@ -867,10 +868,15 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	// note column id
 	(void) filter_colids->ExchangeSet(colid);
 
+	CAutoTrace at(mp);
+	hist_before->OsPrint(at.Os());
+
 	CDouble local_scale_factor(1.0);
 	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
 	local_scale_factor = result_histogram->NormalizeHistogram();
 
+	// histogram_buckets->Release();
+	GPOS_DELETE(histogram);
 	GPOS_ASSERT(DOUBLE(1.0) <= local_scale_factor.Get());
 
 	*last_scale_factor = *last_scale_factor * local_scale_factor;
