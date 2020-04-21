@@ -43,10 +43,11 @@ namespace gpnaucrates
 			// private assignment operator
 			CPoint& operator=(CPoint &);
 
-			// datum corresponding to the point
-			IDatum *m_datum;
 
 		public:
+
+			// datum corresponding to the point
+			IDatum *m_datum;
 
 			// c'tor
 			explicit 
@@ -101,6 +102,8 @@ namespace gpnaucrates
 			CPoint *MaxPoint(CPoint *point1, CPoint *point2);
 	}; // class CPoint
 
+	// array of CPoints
+	typedef CDynamicPtrArray<CPoint, CleanupRelease> CPointArray;
 }
 
 #endif // !GPNAUCRATES_CPoint_H
