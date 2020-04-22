@@ -348,13 +348,13 @@ namespace gpnaucrates
 					const;
 
 			// number of buckets
-			ULONG Buckets() const
+			ULONG GetNumBuckets() const
 			{
 				return m_histogram_buckets->Size();
 			}
 
 			// buckets accessor
-			const CBucketArray *ParseDXLToBucketsArray() const
+			const CBucketArray *GetBuckets() const
 			{
 				return m_histogram_buckets;
 			}
