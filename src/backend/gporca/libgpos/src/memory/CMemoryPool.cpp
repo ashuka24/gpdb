@@ -94,28 +94,28 @@ CMemoryPool::OsPrint
 void
 CMemoryPool::AssertEmpty
 	(
-	IOstream &//os
+	IOstream &os
 	)
 {
-//	if (SupportsLiveObjectWalk() && NULL != ITask::Self() &&
-//	    !GPOS_FTRACE(EtraceDisablePrintMemoryLeak))
-//	{
-//		CMemoryVisitorPrint visitor(os);
-//		WalkLiveObjects(&visitor);
-//
-//		if (0 != visitor.GetNumVisits())
-//		{
-//			os
-//				<< "Unfreed memory in memory pool "
-//				<< (void*)this
-//				<< ": "
-//				<< visitor.GetNumVisits()
-//				<< " objects leaked"
-//				<< std::endl;
-//
-//			GPOS_ASSERT(!"leak detected");
-//		}
-//	}
+	if (SupportsLiveObjectWalk() && NULL != ITask::Self() &&
+	    !GPOS_FTRACE(EtraceDisablePrintMemoryLeak))
+	{
+		CMemoryVisitorPrint visitor(os);
+		WalkLiveObjects(&visitor);
+
+		if (0 != visitor.GetNumVisits())
+		{
+			os
+				<< "Unfreed memory in memory pool "
+				<< (void*)this
+				<< ": "
+				<< visitor.GetNumVisits()
+				<< " objects leaked"
+				<< std::endl;
+
+			GPOS_ASSERT(!"leak detected");
+		}
+	}
 }
 
 #endif // GPOS_DEBUG

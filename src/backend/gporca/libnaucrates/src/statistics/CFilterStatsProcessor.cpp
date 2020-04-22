@@ -858,7 +858,6 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		{
 			continue;
 		}
-		datum->AddRef();
 		CBucket *bucket = CBucket::MakeBucketSingleton(mp, datum);
 		histogram_buckets->Append(bucket);
 	}

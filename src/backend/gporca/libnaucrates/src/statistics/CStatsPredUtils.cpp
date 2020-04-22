@@ -1008,9 +1008,11 @@ CStatsPredUtils::ProcessArrayCmp
 			{
 				CScalarConst *scalar_const_op = CScalarConst::PopConvert(expr_const->Pop());
 				IDatum *datum_literal = scalar_const_op->GetDatum();
-				GPOS_ASSERT(datum_literal->StatsAreComparable(datum_literal)); // Can we actually assert this here?
+				GPOS_ASSERT(datum_literal->StatsAreComparable(datum_literal)); // Can we actually assert this here? (no. some ctest fail this assertion)
+				datum_literal->AddRef();
 				datums->Append(datum_literal);
 			}
+			expr_const->Release();
 		}
 
 		CStatsPred *pred_stats = GPOS_NEW(mp) CStatsPredArrayCmp(col_ref->Id(), stats_cmp_type, datums);
