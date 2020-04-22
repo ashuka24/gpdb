@@ -246,6 +246,13 @@ CBucket::OsPrint
 	return os;
 }
 
+void
+CBucket::DbgPrint() const
+{
+	CAutoTrace at(CTask::Self()->Pmp());
+	OsPrint(at.Os());
+}
+
 //---------------------------------------------------------------------------
 //	@function:
 //		CBucket::MakeBucketGreaterThan
