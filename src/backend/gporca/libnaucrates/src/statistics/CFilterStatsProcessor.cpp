@@ -844,14 +844,13 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	const ULONG colid = pred_stats->GetColId();
 	GPOS_ASSERT(CHistogram::IsOpSupportedForFilter(pred_stats->GetCmpType()));
 
-	CBucketArray *histogram_buckets = GPOS_NEW(mp) CBucketArray(mp);
+	CBucketArray *histogram_buckets = CHistogram::DeepCopyHistogramBuckets(mp, hist_before->GetBuckets());
 
 	IDatumArray *datums = pred_stats->GetDatums();
 	datums->Sort(&CUtils::IDatumCmp);
 	IDatum *prev_datum = NULL;
+	IDatumArray *deduped_datums = GPOS_NEW(mp) IDatumArray(mp);
 
-	// TODO: Deduplicate datums along the way!
-	// TODO: What if it's a in (1, 2, NULL)
 	for (ULONG ul = 0; ul < datums->Size(); ++ul)
 	{
 		IDatum *datum = (*datums)[ul];
@@ -863,9 +862,41 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		{
 			continue;
 		}
-		CBucket *bucket = CBucket::MakeBucketSingleton(mp, datum);
-		histogram_buckets->Append(bucket);
-		prev_datum = datum;
+		datum->AddRef();
+		deduped_datums->Append(datum);
+	}
+
+	ULONG bucket_iter = 0;
+	ULONG datum_iter = 0;
+	for (;bucket_iter < histogram_buckets->Size(); ++bucket_iter)
+	{
+		CBucket *bucket = (*histogram_buckets)[bucket_iter];
+		bucket->SetFrequency(CDouble(0.0));
+		bucket->SetDistinct(CDouble(0.0));
+		ULONG ndv = 0;
+		const IDatum *lower_bound = bucket->GetLowerBound()->GetDatum();
+		const IDatum *upper_bound = bucket->GetUpperBound()->GetDatum();
+		IDatum *datum = (*deduped_datums)[datum_iter];
+
+		while (datum < lower_bound)
+		{
+			datum_iter++;
+			datum = (*deduped_datums)[datum_iter];
+
+		}
+		if (datum > upper_bound)
+		{
+			continue;
+		}
+		while (datum <= upper_bound)
+		{
+			ndv++;
+			datum_iter++;
+			datum = (*deduped_datums)[datum_iter];
+		}
+
+		bucket->SetFrequency(CDouble(ndv/histogram_buckets->Size()));
+		bucket->SetDistinct(CDouble(ndv));
 	}
 
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
