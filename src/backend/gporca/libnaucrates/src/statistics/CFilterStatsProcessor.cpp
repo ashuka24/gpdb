@@ -847,7 +847,8 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	CBucketArray *histogram_buckets = GPOS_NEW(mp) CBucketArray(mp);
 
 	IDatumArray *datums = pred_stats->GetDatums();
-	datums->Sort();
+	datums->Sort(&CUtils::IDatumCmp);
+	IDatum *prev_datum = NULL;
 
 	// TODO: Deduplicate datums along the way!
 	// TODO: What if it's a in (1, 2, NULL)
@@ -858,21 +859,36 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		{
 			continue;
 		}
+		if (prev_datum != NULL && prev_datum->StatsAreEqual(datum))
+		{
+			continue;
+		}
 		CBucket *bucket = CBucket::MakeBucketSingleton(mp, datum);
 		histogram_buckets->Append(bucket);
+		prev_datum = datum;
 	}
 
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
 
+	histogram->NormalizeHistogram();
+
+	CAutoTrace at(mp);
+	at.Os() << "Histogram: " << std::endl;
+	histogram->OsPrint(at.Os());
+	GPOS_ASSERT(histogram->IsValid());
+
 	// note column id
 	(void) filter_colids->ExchangeSet(colid);
 
-	CAutoTrace at(mp);
+	at.Os() << "Histogram Before: " << std::endl;
 	hist_before->OsPrint(at.Os());
 
 	CDouble local_scale_factor(1.0);
 	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
 	local_scale_factor = result_histogram->NormalizeHistogram();
+
+	at.Os() << "Histogram Result: " << std::endl;
+	result_histogram->OsPrint(at.Os());
 
 	// histogram_buckets->Release();
 	GPOS_DELETE(histogram);
