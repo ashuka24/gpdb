@@ -998,7 +998,7 @@ CStatsPredUtils::ProcessArrayCmp
 
 	if (stats_cmp_type == CStatsPred::EstatscmptEq && is_array_cmp_any)
 	{
-		IDatumArray *datums = GPOS_NEW(mp) IDatumArray(mp);
+		CPointArray *points = GPOS_NEW(mp) CPointArray(mp);
 
 		for (ULONG ul = 0; ul < constants; ul++)
 		{
@@ -1010,12 +1010,13 @@ CStatsPredUtils::ProcessArrayCmp
 				IDatum *datum_literal = scalar_const_op->GetDatum();
 				GPOS_ASSERT(datum_literal->StatsAreComparable(datum_literal)); // Can we actually assert this here? (no. some ctest fail this assertion)
 				datum_literal->AddRef();
-				datums->Append(datum_literal);
+				CPoint *point = GPOS_NEW(mp) CPoint(datum_literal);
+				points->Append(point);
 			}
 			expr_const->Release();
 		}
 
-		CStatsPred *pred_stats = GPOS_NEW(mp) CStatsPredArrayCmp(col_ref->Id(), stats_cmp_type, datums);
+		CStatsPred *pred_stats = GPOS_NEW(mp) CStatsPredArrayCmp(col_ref->Id(), stats_cmp_type, points);
 		pred_stats_array->Append(pred_stats);
 
 		return;

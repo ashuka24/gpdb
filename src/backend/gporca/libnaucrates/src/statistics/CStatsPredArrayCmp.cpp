@@ -25,12 +25,12 @@ CStatsPredArrayCmp::CStatsPredArrayCmp
 	(
 	ULONG colid,
 	CStatsPred::EStatsCmpType stats_cmp_type,
-	IDatumArray *datums
+	CPointArray *points
 	)
 	:
 	CStatsPred(colid),
 	m_stats_cmp_type(stats_cmp_type),
-	m_datums(datums)
+	m_points(points)
 {
 	GPOS_ASSERT(CStatsPred::EstatscmptEq == m_stats_cmp_type);
 }

@@ -846,14 +846,16 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 
 	CBucketArray *histogram_buckets = CHistogram::DeepCopyHistogramBuckets(mp, hist_before->GetBuckets());
 
-	IDatumArray *datums = pred_stats->GetDatums();
-	datums->Sort(&CUtils::IDatumCmp);
-	IDatum *prev_datum = NULL;
-	IDatumArray *deduped_datums = GPOS_NEW(mp) IDatumArray(mp);
+	CPointArray *points = pred_stats->GetPoints();
+	points->Sort(&CUtils::CPointCmp);
 
-	for (ULONG ul = 0; ul < datums->Size(); ++ul)
+	CPointArray *deduped_points = GPOS_NEW(mp) CPointArray(mp);
+	IDatum *prev_datum = NULL;
+
+	for (ULONG ul = 0; ul < points->Size(); ++ul)
 	{
-		IDatum *datum = (*datums)[ul];
+		CPoint *point = (*points)[ul];
+		IDatum *datum = point->GetDatum();
 		if (datum->IsNull())
 		{
 			continue;
@@ -862,14 +864,14 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		{
 			continue;
 		}
-		datum->AddRef();
-		deduped_datums->Append(datum);
+		point->AddRef();
+		deduped_points->Append(point);
 	}
 
-	ULONG datum_iter = 0;
+	ULONG point_iter = 0;
 	for (ULONG bucket_iter = 0; bucket_iter < histogram_buckets->Size(); ++bucket_iter)
 	{
-		if (datum_iter < deduped_datums->Size())
+		if (point_iter > deduped_points->Size())
 		{
 			break;
 		}
@@ -877,38 +879,38 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		bucket->SetFrequency(CDouble(0.0));
 		bucket->SetDistinct(CDouble(0.0));
 		ULONG ndv = 0;
-		const IDatum *lower_bound = bucket->GetLowerBound()->GetDatum();
-		const IDatum *upper_bound = bucket->GetUpperBound()->GetDatum();
 		// TODO: make sure stats are comparable
-		IDatum *datum = (*deduped_datums)[datum_iter];
-		// ignore everything not in the bucket
-		while (datum->StatsAreLessThan(lower_bound) && datum_iter < deduped_datums->Size())
-		{
-			datum_iter++;
-			datum = (*deduped_datums)[datum_iter];
+		CPoint *point = (*deduped_points)[point_iter];
 
+		// ignore everything not in the bucket
+		// ignore datums that are before the bucket
+		while (bucket->IsBefore(point) && point_iter < deduped_points->Size())
+		{
+			point_iter++;
+			point = (*deduped_points)[point_iter];
 		}
-		if (datum->StatsAreGreaterThan(upper_bound))
+		// if the point is after the bucket, move to the next bucket
+		if (bucket->IsAfter(point))
 		{
 			continue;
 		}
-		// TODO: open vs closed bounds
-		while ((datum->StatsAreLessThan(upper_bound) || datum->StatsAreEqual(upper_bound)) &&
-			   datum_iter < deduped_datums->Size())
+
+		while(bucket->Contains(point) && point_iter < deduped_points->Size())
 		{
 			ndv++;
-			datum_iter++;
-			datum = (*deduped_datums)[datum_iter];
+			point_iter++;
+			point = (*deduped_points)[point_iter];
 		}
 
-		bucket->SetFrequency(CDouble(ndv/deduped_datums->Size()));
+		bucket->SetFrequency(CDouble(ndv)/CDouble(deduped_points->Size()));
 		bucket->SetDistinct(CDouble(ndv));
+
 	}
 
-	deduped_datums->Release();
+	deduped_points->Release();
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
 
-//	histogram->NormalizeHistogram();
+	histogram->NormalizeHistogram();
 
 	CAutoTrace at(mp);
 	at.Os() << "Histogram: " << std::endl;

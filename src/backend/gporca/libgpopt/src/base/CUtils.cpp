@@ -4718,6 +4718,30 @@ INT CUtils::IDatumCmp
 	return 1;
 }
 
+// compares two datums. Takes pointer pointer to a datums.
+INT CUtils::CPointCmp
+		(
+		const void *val1,
+		const void *val2
+		)
+{
+	const CPoint *p1 = *(CPoint**)(val1);
+	const CPoint *p2 = *(CPoint**)(val2);
+
+	const IComparator *pcomp = COptCtxt::PoctxtFromTLS()->Pcomp();
+
+	if (pcomp->Equals(p1->GetDatum(), p2->GetDatum()))
+	{
+		return 0;
+	}
+	else if (pcomp->IsLessThan(p1->GetDatum(), p2->GetDatum()))
+	{
+		return -1;
+	}
+
+	return 1;
+}
+
 // check if the equivalance classes are disjoint
 BOOL
 CUtils::FEquivalanceClassesDisjoint
