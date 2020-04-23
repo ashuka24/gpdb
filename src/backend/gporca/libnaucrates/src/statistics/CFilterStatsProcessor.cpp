@@ -905,6 +905,7 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		bucket->SetDistinct(CDouble(ndv));
 	}
 
+	deduped_datums->Release();
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
 
 //	histogram->NormalizeHistogram();
