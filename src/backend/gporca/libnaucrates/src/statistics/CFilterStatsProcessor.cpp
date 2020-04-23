@@ -866,46 +866,53 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		deduped_datums->Append(datum);
 	}
 
-	ULONG bucket_iter = 0;
 	ULONG datum_iter = 0;
-	for (;bucket_iter < histogram_buckets->Size(); ++bucket_iter)
+	for (ULONG bucket_iter = 0; bucket_iter < histogram_buckets->Size(); ++bucket_iter)
 	{
+		if (datum_iter < deduped_datums->Size())
+		{
+			break;
+		}
 		CBucket *bucket = (*histogram_buckets)[bucket_iter];
 		bucket->SetFrequency(CDouble(0.0));
 		bucket->SetDistinct(CDouble(0.0));
 		ULONG ndv = 0;
 		const IDatum *lower_bound = bucket->GetLowerBound()->GetDatum();
 		const IDatum *upper_bound = bucket->GetUpperBound()->GetDatum();
+		// TODO: make sure stats are comparable
 		IDatum *datum = (*deduped_datums)[datum_iter];
-
-		while (datum < lower_bound)
+		// ignore everything not in the bucket
+		while (datum->StatsAreLessThan(lower_bound) && datum_iter < deduped_datums->Size())
 		{
 			datum_iter++;
 			datum = (*deduped_datums)[datum_iter];
 
 		}
-		if (datum > upper_bound)
+		if (datum->StatsAreGreaterThan(upper_bound))
 		{
 			continue;
 		}
-		while (datum <= upper_bound)
+		// TODO: open vs closed bounds
+		while ((datum->StatsAreLessThan(upper_bound) || datum->StatsAreEqual(upper_bound)) &&
+			   datum_iter < deduped_datums->Size())
 		{
 			ndv++;
 			datum_iter++;
 			datum = (*deduped_datums)[datum_iter];
 		}
 
-		bucket->SetFrequency(CDouble(ndv/histogram_buckets->Size()));
+		bucket->SetFrequency(CDouble(ndv/deduped_datums->Size()));
 		bucket->SetDistinct(CDouble(ndv));
 	}
 
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
 
-	histogram->NormalizeHistogram();
+//	histogram->NormalizeHistogram();
 
 	CAutoTrace at(mp);
 	at.Os() << "Histogram: " << std::endl;
 	histogram->OsPrint(at.Os());
+	at.Os() << std::endl;
 	GPOS_ASSERT(histogram->IsValid());
 
 	// note column id
