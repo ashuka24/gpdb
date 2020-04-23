@@ -876,9 +876,11 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 			break;
 		}
 		CBucket *bucket = (*histogram_buckets)[bucket_iter];
+		const CDouble old_freq = bucket->GetFrequency();
+		const CDouble old_ndv = bucket->GetNumDistinct();
 		bucket->SetFrequency(CDouble(0.0));
 		bucket->SetDistinct(CDouble(0.0));
-		ULONG ndv = 0;
+		DOUBLE ndv = 0;
 		// TODO: make sure stats are comparable
 		CPoint *point = (*deduped_points)[point_iter];
 
@@ -902,7 +904,7 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 			point = (*deduped_points)[point_iter];
 		}
 
-		bucket->SetFrequency(CDouble(ndv)/CDouble(deduped_points->Size()));
+		bucket->SetFrequency(CDouble(std::min(old_ndv.Get(), ndv)/ndv) * old_freq);
 		bucket->SetDistinct(CDouble(ndv));
 
 	}
@@ -910,7 +912,7 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	deduped_points->Release();
 	CHistogram *histogram = GPOS_NEW(mp) CHistogram(mp, histogram_buckets);
 
-	histogram->NormalizeHistogram();
+//	histogram->NormalizeHistogram();
 
 	CAutoTrace at(mp);
 	at.Os() << "Histogram: " << std::endl;
@@ -925,20 +927,20 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	hist_before->OsPrint(at.Os());
 
 	CDouble local_scale_factor(1.0);
-	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
-	local_scale_factor = result_histogram->NormalizeHistogram();
+//	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
+	local_scale_factor = histogram->NormalizeHistogram();
 
 	at.Os() << "Histogram Result: " << std::endl;
-	result_histogram->OsPrint(at.Os());
+//	result_histogram->OsPrint(at.Os());
 
 	// histogram_buckets->Release();
-	GPOS_DELETE(histogram);
+//	GPOS_DELETE(histogram);
 	GPOS_ASSERT(DOUBLE(1.0) <= local_scale_factor.Get());
 
 	*last_scale_factor = *last_scale_factor * local_scale_factor;
 	*target_last_colid = colid;
 
-	return result_histogram;
+	return histogram;
 }
 
 // check if the column is a new column for statistic calculation
