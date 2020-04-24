@@ -847,7 +847,10 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 	CBucketArray *histogram_buckets = CHistogram::DeepCopyHistogramBuckets(mp, hist_before->GetBuckets());
 
 	CPointArray *points = pred_stats->GetPoints();
-	points->Sort(&CUtils::CPointCmp);
+	if (points->Size() > 1)
+	{
+		points->Sort(&CUtils::CPointCmp);
+	}
 
 	CPointArray *deduped_points = GPOS_NEW(mp) CPointArray(mp);
 	IDatum *prev_datum = NULL;
