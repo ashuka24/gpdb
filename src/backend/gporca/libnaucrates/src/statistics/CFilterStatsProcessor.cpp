@@ -915,17 +915,17 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 
 //	histogram->NormalizeHistogram();
 
-	CAutoTrace at(mp);
-	at.Os() << "Histogram: " << std::endl;
-	histogram->OsPrint(at.Os());
-	at.Os() << std::endl;
+//	CAutoTrace at(mp);
+//	at.Os() << "Histogram: " << std::endl;
+//	histogram->OsPrint(at.Os());
+//	at.Os() << std::endl;
 	GPOS_ASSERT(histogram->IsValid());
 
 	// note column id
 	(void) filter_colids->ExchangeSet(colid);
 
-	at.Os() << "Histogram Before: " << std::endl;
-	hist_before->OsPrint(at.Os());
+//	at.Os() << "Histogram Before: " << std::endl;
+//	hist_before->OsPrint(at.Os());
 
 	CDouble local_scale_factor(1.0);
 //	CHistogram *result_histogram = hist_before->MakeJoinHistogram(pred_stats->GetCmpType(), histogram);
