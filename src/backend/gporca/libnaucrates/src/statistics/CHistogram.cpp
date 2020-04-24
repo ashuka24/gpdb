@@ -1046,10 +1046,10 @@ CHistogram::NormalizeHistogram()
 		return CDouble(GPOS_FP_ABS_MAX);
 	}
 
-	CDouble scale_factor = (CDouble(1.0) / GetFrequency()).Get();
+	CDouble scale_factor = std::max(DOUBLE(1.0), (CDouble(1.0) / GetFrequency()).Get());
 
 	// if the scale factor is 1.0, we don't need to copy the buckets
-	if ((scale_factor - CDouble(1.0)).Absolute() > CStatistics::Epsilon)
+	if (scale_factor != DOUBLE(1.0))
 	{
 		// since we want to modify individual buckets for this and only this histogram,
 		// we must first make a deep copy of the existing m_histogram_buckets as these buckets
