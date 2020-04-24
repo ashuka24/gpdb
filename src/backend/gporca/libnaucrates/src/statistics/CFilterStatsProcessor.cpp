@@ -882,26 +882,24 @@ CFilterStatsProcessor::MakeHistArrayCmpFilter
 		bucket->SetDistinct(CDouble(0.0));
 		DOUBLE ndv = 0;
 		// TODO: make sure stats are comparable
-		CPoint *point = (*deduped_points)[point_iter];
-
 		// ignore everything not in the bucket
 		// ignore datums that are before the bucket
-		while (bucket->IsBefore(point) && point_iter < deduped_points->Size())
+		while (point_iter < deduped_points->Size() &&
+			   bucket->IsBefore((*deduped_points)[point_iter]))
 		{
 			point_iter++;
-			point = (*deduped_points)[point_iter];
 		}
 		// if the point is after the bucket, move to the next bucket
-		if (bucket->IsAfter(point))
+		if ( point_iter >= deduped_points->Size() || bucket->IsAfter((*deduped_points)[point_iter]))
 		{
 			continue;
 		}
 
-		while(bucket->Contains(point) && point_iter < deduped_points->Size())
+		while(point_iter < deduped_points->Size() &&
+			  bucket->Contains((*deduped_points)[point_iter]))
 		{
 			ndv++;
 			point_iter++;
-			point = (*deduped_points)[point_iter];
 		}
 
 		bucket->SetFrequency(CDouble(std::min(old_ndv.Get(), ndv)/ndv) * old_freq);
