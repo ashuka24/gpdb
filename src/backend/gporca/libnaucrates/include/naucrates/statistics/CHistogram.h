@@ -375,6 +375,10 @@ namespace gpnaucrates
 			virtual
 			IOstream &OsPrint(IOstream &os) const;
 
+#ifdef GPOS_DEBUG
+			void DbgPrint() const;
+#endif
+
 			// total frequency from buckets and null fraction
 			CDouble GetFrequency() const;
 

@@ -176,6 +176,15 @@ CHistogram::OsPrint
 	return os;
 }
 
+#ifdef GPOS_DEBUG
+void
+CHistogram::DbgPrint() const
+{
+	CAutoTrace at(CTask::Self()->Pmp());
+	OsPrint(at.Os());
+}
+#endif
+
 // check if histogram is empty
 BOOL
 CHistogram::IsEmpty
