@@ -842,6 +842,10 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	GPOS_ASSERT(NULL != base_histogram);
 	GPOS_ASSERT(pred_stats->GetCmpType() == CStatsPred::EstatscmptEq);
 
+	// Evaluate statistics for "select * from foo where a in (...)" as
+	// "select * from foo join (values (...)) x(a) on foo.a=x.a"
+	// as long as the list is deduplicated
+	//
 	// General algorithm:
 	// 1. Construct a histogram with the same bucket boundaries as present in the
 	//    base_histogram.
@@ -850,7 +854,7 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	//    CStatistics::Epsilon, and may be considered as 0, leading to
 	//    cardinality misestimation. Using the same buckets as base_histogram
 	//    also aids in joining histogram later.
-	// 2. Compute the frequency for each bucket based on the number of points (NDV)
+	// 2. Compute the normalized frequency for each bucket based on the number of points (NDV)
 	//    present within each bucket boundary. NB: the points must be de-duplicated
 	//    beforehand to prevent double counting.
 	// 3. Join this "dummy_histogram" with the base_histogram to determine the buckets
@@ -930,22 +934,17 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	}
 
 	CHistogram *dummy_histogram = GPOS_NEW(mp) CHistogram(mp, dummy_histogram_buckets);
-	dummy_histogram->NormalizeHistogram();
+	// dummy histogram should already be normalized since each bucket's frequency
+	// is already adjusted by a scale factor of 1/dummy_rows to avoid unnecessarily
+	// deep-copying the histogram buckets
 	GPOS_ASSERT(dummy_histogram->IsValid());
 
 	// Compute the join'ed histogram
 	CHistogram *result_histogram = base_histogram->MakeJoinHistogram(pred_stats->GetCmpType(), dummy_histogram);
 
-	// The logic in MakeJoinHistogram() scales frequencies based on the number of
-	// rows of a cartesian product.  However, in this function, we're using
-	// MakeJoinHistogram() to try and estimate the frequencies for a filter, not
-	// a cartesian product.  So, we must adjust the scalar factor accordingly to
-	// account for the difference in num_rows.
-	// That is, since the num_rows is not r1 * r2 (like MakeJoinHistogram()
-	// expects), and instead, it is r1 (rows of the base histogram), adjust the
-	// scale factor by dividing it by r2 (dummy_rows).
-	CDouble local_scale_factor(1.0);
-	local_scale_factor = result_histogram->NormalizeHistogram() / dummy_rows;
+	CDouble local_scale_factor = result_histogram->NormalizeHistogram();
+	// Adjust the local scale factor by the scale factor of dummy histogram
+	local_scale_factor = local_scale_factor / dummy_rows;
 	local_scale_factor = CDouble(std::max(local_scale_factor.Get(), 1.0));
 
 	GPOS_ASSERT(DOUBLE(1.0) <= local_scale_factor.Get());
