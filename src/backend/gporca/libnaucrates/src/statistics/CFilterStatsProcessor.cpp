@@ -895,6 +895,7 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	CBucketArray *dummy_histogram_buckets =
 		CHistogram::DeepCopyHistogramBuckets(mp, base_histogram->GetBuckets());
 	ULONG point_iter = 0;
+	ULONG ndv_remain = 0;
 	for (ULONG bucket_iter = 0; bucket_iter < dummy_histogram_buckets->Size(); ++bucket_iter)
 	{
 		if (point_iter > deduped_points->Size())
@@ -908,20 +909,21 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 		bucket->SetDistinct(CDouble(0.0));
 		ULONG ndv = 0;
 
-		// ignore datums that are before the bucket
+		// ignore datums that are before the bucket, add it to ndv_remain
 		while (point_iter < deduped_points->Size() &&
 			   bucket->IsBefore((*deduped_points)[point_iter]))
 		{
+			ndv_remain++;
 			point_iter++;
 		}
 		// if the point is after the bucket, move to the next bucket
-		if ( point_iter >= deduped_points->Size() || bucket->IsAfter((*deduped_points)[point_iter]))
+		if (point_iter >= deduped_points->Size() || bucket->IsAfter((*deduped_points)[point_iter]))
 		{
 			continue;
 		}
 
 		// count the number of points that map to the current bucket
-		while(point_iter < deduped_points->Size() &&
+		while (point_iter < deduped_points->Size() &&
 			  bucket->Contains((*deduped_points)[point_iter]))
 		{
 			ndv++;
@@ -933,11 +935,27 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 		bucket->SetDistinct(CDouble(ndv));
 	}
 
-	CHistogram *dummy_histogram = GPOS_NEW(mp) CHistogram(mp, dummy_histogram_buckets);
+	// if we have gone through all the buckets, and there are still points, add them to ndv_remain
+	while (point_iter < deduped_points->Size())
+	{
+		ndv_remain++;
+		point_iter++;
+	}
+
+	CDouble freq_remain(0.0);
+	if (ndv_remain != 0)
+	{
+		freq_remain = CDouble(ndv_remain) / dummy_rows;
+	}
+	CHistogram *dummy_histogram = GPOS_NEW(mp) CHistogram(mp, dummy_histogram_buckets,
+							      true /* is_well_defined */,
+							      CDouble(0.0) /* null_freq */,
+							      CDouble(ndv_remain) /* distinct_remain */,
+							      freq_remain);
 	// dummy histogram should already be normalized since each bucket's frequency
 	// is already adjusted by a scale factor of 1/dummy_rows to avoid unnecessarily
 	// deep-copying the histogram buckets
-	GPOS_ASSERT(dummy_histogram->IsValid());
+	GPOS_ASSERT(dummy_histogram->IsValid() && dummy_histogram->GetNumDistinct() - dummy_rows < CStatistics::Epsilon);
 
 	// Compute the join'ed histogram
 	CHistogram *result_histogram = base_histogram->MakeJoinHistogram(pred_stats->GetCmpType(), dummy_histogram);
