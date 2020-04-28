@@ -724,7 +724,7 @@ CFilterStatsProcessor::MakeHistSimpleFilter
 	{
 		CStatsPredArrayCmp *arraycmp_pred_stats = CStatsPredArrayCmp::ConvertPredStats(pred_stats);
 
-		return MakeHistArrayCmpFilter(mp, arraycmp_pred_stats, filter_colids,
+		return MakeHistArrayCmpAnyFilter(mp, arraycmp_pred_stats, filter_colids,
 									  hist_before, last_scale_factor, target_last_colid);
 	}
 
@@ -827,7 +827,7 @@ CFilterStatsProcessor::MakeHistLikeFilter
 
 // create a new histograms after applying the ArrayCmp filter
 CHistogram *
-CFilterStatsProcessor::MakeHistArrayCmpFilter
+CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	(
 	CMemoryPool *mp,
 	CStatsPredArrayCmp *pred_stats,
