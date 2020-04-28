@@ -882,6 +882,7 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 		}
 		point->AddRef();
 		deduped_points->Append(point);
+		prev_datum = datum;
 	}
 	CDouble dummy_rows(deduped_points->Size());
 
