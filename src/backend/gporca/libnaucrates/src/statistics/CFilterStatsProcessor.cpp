@@ -930,10 +930,9 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	}
 
 	// if we have gone through all the buckets, and there are still points, add them to ndv_remain
-	while (point_iter < deduped_points->Size())
+	if (point_iter < deduped_points->Size())
 	{
-		ndv_remain++;
-		point_iter++;
+		ndv_remain += deduped_points->Size() - point_iter;
 	}
 
 	CDouble freq_remain(0.0);
