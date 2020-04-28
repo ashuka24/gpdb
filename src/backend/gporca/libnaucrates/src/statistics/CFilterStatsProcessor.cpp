@@ -898,12 +898,6 @@ CFilterStatsProcessor::MakeHistArrayCmpAnyFilter
 	ULONG ndv_remain = 0;
 	for (ULONG bucket_iter = 0; bucket_iter < dummy_histogram_buckets->Size(); ++bucket_iter)
 	{
-		if (point_iter > deduped_points->Size())
-		{
-			// exit if we're out of points to account for
-			break;
-		}
-
 		CBucket *bucket = (*dummy_histogram_buckets)[bucket_iter];
 		bucket->SetFrequency(CDouble(0.0));
 		bucket->SetDistinct(CDouble(0.0));
