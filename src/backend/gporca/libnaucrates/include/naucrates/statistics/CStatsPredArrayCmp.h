@@ -1,6 +1,6 @@
 //---------------------------------------------------------------------------
 //	Greenplum Database
-//	Copyright (C) 2013 EMC Corp.
+//	Copyright (C) 2020 VMware, Inc.
 //
 //	@filename:
 //		CStatsPredArrayCmp.h
