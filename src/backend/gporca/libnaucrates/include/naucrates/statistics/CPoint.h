@@ -43,11 +43,10 @@ namespace gpnaucrates
 			// private assignment operator
 			CPoint& operator=(CPoint &);
 
-
-		public:
-
 			// datum corresponding to the point
 			IDatum *m_datum;
+
+		public:
 
 			// c'tor
 			explicit 

@@ -4718,7 +4718,7 @@ INT CUtils::IDatumCmp
 	return 1;
 }
 
-// compares two datums. Takes pointer pointer to a datums.
+// compares two points. Takes pointer pointer to a CPoint.
 INT CUtils::CPointCmp
 		(
 		const void *val1,
@@ -4728,17 +4728,16 @@ INT CUtils::CPointCmp
 	const CPoint *p1 = *(CPoint**)(val1);
 	const CPoint *p2 = *(CPoint**)(val2);
 
-	const IComparator *pcomp = COptCtxt::PoctxtFromTLS()->Pcomp();
-
-	if (pcomp->Equals(p1->GetDatum(), p2->GetDatum()))
+	if (p1->Equals(p2))
 	{
 		return 0;
 	}
-	else if (pcomp->IsLessThan(p1->GetDatum(), p2->GetDatum()))
+	else if (p1->IsLessThan(p2))
 	{
 		return -1;
 	}
 
+	GPOS_ASSERT(p1->IsGreaterThan(p2));
 	return 1;
 }
 
