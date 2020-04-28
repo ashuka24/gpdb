@@ -73,9 +73,9 @@ namespace gpnaucrates
 				ULONG *target_last_colid
 				);
 
-			// create a new histogram for an unsupported predicate
+			// create a new histogram after applying a pred op ANY(ARRAY[...]) filter
 			static
-			CHistogram *MakeHistArrayCmpFilter
+			CHistogram *MakeHistArrayCmpAnyFilter
 				(
 				CMemoryPool *mp,
 				CStatsPredArrayCmp *pred_stats,
