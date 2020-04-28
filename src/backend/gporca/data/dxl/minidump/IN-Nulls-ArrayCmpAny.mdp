@@ -1,18 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dxl:DXLMessage xmlns:dxl="http://greenplum.com/dxl/2010/12/">
-<dxl:Comment><![CDATA[
-       create table foo(a int);
-       insert into foo select NULL from generate_series(1,500)i;
-       explain select * from foo where a in (NULL, NULL);
-                                          QUERY PLAN
-       ------------------------------------------------------------------------------
-        Gather Motion 1:1  (slice1; segments: 1)  (cost=0.00..431.03 rows=1 width=4)
-          ->  Seq Scan on foo  (cost=0.00..431.03 rows=1 width=4)
-                Filter: (a = ANY ('{NULL,NULL}'::integer[]))
-        Optimizer: Pivotal Optimizer (GPORCA)
-      (4 rows)
-]]>
-  </dxl:Comment>
+  <dxl:Comment><![CDATA[
+    create table foo(a int);
+    insert into foo select NULL from generate_series(1, 500)i;
+    insert into foo select 5 from generate_series(1, 50)i;
+    analyze;
+    explain select * from foo where a in (5, 10, NULL);
+
+    Should return around 50 rows (for the 50 5s in the table)
+    ]]> </dxl:Comment>
   <dxl:Thread Id="0">
     <dxl:OptimizerConfig>
       <dxl:EnumeratorConfig Id="0" PlanSamples="0" CostThreshold="0"/>
@@ -28,8 +24,8 @@
       <dxl:TraceFlags Value="102074,102120,102146,103001,103014,103022,103027,103029,103038,104002,104003,104004,104005,105000,106000"/>
     </dxl:OptimizerConfig>
     <dxl:Metadata SystemIds="0.GPDB">
-      <dxl:RelationStatistics Mdid="2.32775.1.0" Name="foo" Rows="500.000000" EmptyRelation="false"/>
-      <dxl:Relation Mdid="0.32775.1.0" Name="foo" IsTemporary="false" HasOids="false" StorageType="Heap" DistributionPolicy="Hash" DistributionColumns="0" Keys="7,1" NumberLeafPartitions="0">
+      <dxl:RelationStatistics Mdid="2.16385.1.0" Name="foo" Rows="550.000000" EmptyRelation="false"/>
+      <dxl:Relation Mdid="0.16385.1.0" Name="foo" IsTemporary="false" HasOids="false" StorageType="Heap" DistributionPolicy="Hash" DistributionColumns="0" Keys="7,1" NumberLeafPartitions="0">
         <dxl:Columns>
           <dxl:Column Name="a" Attno="1" Mdid="0.23.1.0" Nullable="true" ColWidth="4">
             <dxl:DefaultValue/>
@@ -97,7 +93,12 @@
         <dxl:SumAgg Mdid="0.2108.1.0"/>
         <dxl:CountAgg Mdid="0.2147.1.0"/>
       </dxl:Type>
-      <dxl:ColumnStatistics Mdid="1.32775.1.0.0" Name="a" Width="4.000000" NullFreq="1.000000" NdvRemain="0.000000" FreqRemain="0.000000" ColStatsMissing="false"/>
+      <dxl:ColumnStatistics Mdid="1.16385.1.0.0" Name="a" Width="4.000000" NullFreq="0.909082" NdvRemain="0.000000" FreqRemain="0.000000" ColStatsMissing="false">
+        <dxl:StatsBucket Frequency="0.090908" DistinctValues="1.000000">
+          <dxl:LowerBound Closed="true" TypeMdid="0.23.1.0" Value="5"/>
+          <dxl:UpperBound Closed="true" TypeMdid="0.23.1.0" Value="5"/>
+        </dxl:StatsBucket>
+      </dxl:ColumnStatistics>
       <dxl:Type Mdid="0.26.1.0" Name="oid" IsRedistributable="true" IsHashable="true" IsMergeJoinable="true" IsComposite="false" IsTextRelated="false" IsFixedLength="true" Length="4" PassByValue="true">
         <dxl:DistrOpfamily Mdid="0.1990.1.0"/>
         <dxl:LegacyDistrOpfamily Mdid="0.7109.1.0"/>
@@ -190,12 +191,13 @@
         <dxl:ArrayComp OperatorName="=" OperatorMdid="0.96.1.0" OperatorType="Any">
           <dxl:Ident ColId="1" ColName="a" TypeMdid="0.23.1.0"/>
           <dxl:Array ArrayType="0.1007.1.0" ElementType="0.23.1.0" MultiDimensional="false">
-            <dxl:ConstValue TypeMdid="0.23.1.0" IsNull="true"/>
+            <dxl:ConstValue TypeMdid="0.23.1.0" Value="5"/>
+            <dxl:ConstValue TypeMdid="0.23.1.0" Value="10"/>
             <dxl:ConstValue TypeMdid="0.23.1.0" IsNull="true"/>
           </dxl:Array>
         </dxl:ArrayComp>
         <dxl:LogicalGet>
-          <dxl:TableDescriptor Mdid="0.32775.1.0" TableName="foo">
+          <dxl:TableDescriptor Mdid="0.16385.1.0" TableName="foo">
             <dxl:Columns>
               <dxl:Column ColId="1" Attno="1" ColName="a" TypeMdid="0.23.1.0" ColWidth="4"/>
               <dxl:Column ColId="2" Attno="-1" ColName="ctid" TypeMdid="0.27.1.0" ColWidth="6"/>
@@ -213,7 +215,7 @@
     <dxl:Plan Id="0" SpaceSize="1">
       <dxl:GatherMotion InputSegments="0,1,2" OutputSegments="-1">
         <dxl:Properties>
-          <dxl:Cost StartupCost="0" TotalCost="431.025835" Rows="2.000000" Width="4"/>
+          <dxl:Cost StartupCost="0" TotalCost="431.015077" Rows="50.999400" Width="4"/>
         </dxl:Properties>
         <dxl:ProjList>
           <dxl:ProjElem ColId="0" Alias="a">
@@ -224,7 +226,7 @@
         <dxl:SortingColumnList/>
         <dxl:TableScan>
           <dxl:Properties>
-            <dxl:Cost StartupCost="0" TotalCost="431.025805" Rows="2.000000" Width="4"/>
+            <dxl:Cost StartupCost="0" TotalCost="431.014316" Rows="50.999400" Width="4"/>
           </dxl:Properties>
           <dxl:ProjList>
             <dxl:ProjElem ColId="0" Alias="a">
@@ -235,12 +237,13 @@
             <dxl:ArrayComp OperatorName="=" OperatorMdid="0.96.1.0" OperatorType="Any">
               <dxl:Ident ColId="0" ColName="a" TypeMdid="0.23.1.0"/>
               <dxl:Array ArrayType="0.1007.1.0" ElementType="0.23.1.0" MultiDimensional="false">
-                <dxl:ConstValue TypeMdid="0.23.1.0" IsNull="true"/>
+                <dxl:ConstValue TypeMdid="0.23.1.0" Value="5"/>
+                <dxl:ConstValue TypeMdid="0.23.1.0" Value="10"/>
                 <dxl:ConstValue TypeMdid="0.23.1.0" IsNull="true"/>
               </dxl:Array>
             </dxl:ArrayComp>
           </dxl:Filter>
-          <dxl:TableDescriptor Mdid="0.32775.1.0" TableName="foo">
+          <dxl:TableDescriptor Mdid="0.16385.1.0" TableName="foo">
             <dxl:Columns>
               <dxl:Column ColId="0" Attno="1" ColName="a" TypeMdid="0.23.1.0" ColWidth="4"/>
               <dxl:Column ColId="1" Attno="-1" ColName="ctid" TypeMdid="0.27.1.0" ColWidth="6"/>
@@ -257,6 +260,12 @@
       <dxl:DirectDispatchInfo>
         <dxl:KeyValue>
           <dxl:Datum TypeMdid="0.23.1.0" IsNull="true"/>
+        </dxl:KeyValue>
+        <dxl:KeyValue>
+          <dxl:Datum TypeMdid="0.23.1.0" Value="5"/>
+        </dxl:KeyValue>
+        <dxl:KeyValue>
+          <dxl:Datum TypeMdid="0.23.1.0" Value="10"/>
         </dxl:KeyValue>
       </dxl:DirectDispatchInfo>
     </dxl:Plan>
