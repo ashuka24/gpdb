@@ -1052,7 +1052,7 @@ namespace gpopt
 			static
 			INT IDatumCmp(const void *val1, const void *val2);
 
-			// compares two Idatums, useful for sorting functions
+			// compares two CPoints, useful for sorting functions
 			static
 			INT CPointCmp(const void *val1, const void *val2);
 
