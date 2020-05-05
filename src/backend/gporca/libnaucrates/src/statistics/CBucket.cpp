@@ -1066,20 +1066,6 @@ CBucket::MakeBucketMerged
 	GPOS_ASSERT(NULL == *bucket_new1);
 	GPOS_ASSERT(NULL == *bucket_new2);
 
-	// merge singleton buckets if they are contained
-	// TODO: fix for the union all case
-	if (!is_union_all)
-	{
-		if (this->IsSingleton() && bucket_other->Contains(this->GetLowerBound()))
-		{
-			return bucket_other->MakeBucketCopy(mp);
-		}
-		else if (bucket_other->IsSingleton() && this->Contains(bucket_other->GetLowerBound()))
-		{
-			return this->MakeBucketCopy(mp);
-		}
-	}
-
 	CPoint *result_lower_new = CPoint::MinPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
 	CPoint *result_upper_new = CPoint::MinPoint(this->GetUpperBound(), bucket_other->GetUpperBound());
 
@@ -1096,6 +1082,35 @@ CBucket::MakeBucketMerged
 		distinct = distinct + (bucket_other->GetNumDistinct() * overlap_other);
 		rows_new = rows_other * bucket_other->GetFrequency() * overlap_other;
 		frequency = rows_new / rows_output;
+	}
+
+	// merge singleton buckets if they are contained
+	// TODO: fix for the union all case
+	if (this->IsSingleton() && bucket_other->Contains(this->GetLowerBound()))
+	{
+		if (is_union_all)
+		{
+			bucket_other->GetLowerBound()->AddRef();
+			bucket_other->GetUpperBound()->AddRef();
+			return GPOS_NEW(mp) CBucket(bucket_other->GetLowerBound(),bucket_other->GetUpperBound(),
+										bucket_other->IsLowerClosed(), bucket_other->IsUpperClosed(),
+										frequency, bucket_other->GetNumDistinct());
+
+		}
+		return bucket_other->MakeBucketCopy(mp);
+	}
+	else if (bucket_other->IsSingleton() && this->Contains(bucket_other->GetLowerBound()))
+	{
+		if (is_union_all)
+		{
+			this->GetLowerBound()->AddRef();
+			this->GetUpperBound()->AddRef();
+			return GPOS_NEW(mp) CBucket(this->GetLowerBound(),this->GetUpperBound(),
+										this->IsLowerClosed(), this->IsUpperClosed(),
+										frequency, this->GetNumDistinct());
+
+		}
+		return this->MakeBucketCopy(mp);
 	}
 
 	BOOL is_upper_closed = result_lower_new->Equals(result_upper_new);
