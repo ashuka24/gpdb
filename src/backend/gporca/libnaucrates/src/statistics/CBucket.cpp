@@ -1066,14 +1066,29 @@ CBucket::MakeBucketMerged
 	GPOS_ASSERT(NULL == *bucket_new1);
 	GPOS_ASSERT(NULL == *bucket_new2);
 
+	// merge singleton buckets if they are contained
+	// TODO: fix for the union all case
+	if (!is_union_all)
+	{
+		if (this->IsSingleton() && bucket_other->Contains(this->GetLowerBound()))
+		{
+			return bucket_other->MakeBucketCopy(mp);
+		}
+		else if (bucket_other->IsSingleton() && this->Contains(bucket_other->GetLowerBound()))
+		{
+			return this->MakeBucketCopy(mp);
+		}
+	}
+
 	CPoint *result_lower_new = CPoint::MinPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
 	CPoint *result_upper_new = CPoint::MinPoint(this->GetUpperBound(), bucket_other->GetUpperBound());
 
 	CDouble overlap = this->GetOverlapPercentage(result_upper_new);
 	CDouble distinct = this->GetNumDistinct() * overlap;
+	CDouble frequency = this->GetFrequency() * overlap;
+
 	CDouble rows_new = rows * this->GetFrequency() * overlap;
 
-	CDouble frequency = this->GetFrequency() * this->GetOverlapPercentage(result_upper_new);
 	if (is_union_all)
 	{
 		CDouble rows_output = (rows_other + rows);
