@@ -1100,6 +1100,27 @@ CBucket::MakeBucketMerged
 
 	BOOL is_upper_closed = result_lower_new->Equals(result_upper_new);
 
+	if (!is_union_all)
+	{
+		// if they have the same upper bound, one of the buckets will be encompassed by the other
+		if (this->GetUpperBound()->Equals(bucket_other->GetUpperBound()))
+		{
+			// bucket_other is fully encompassed by "this" bucket
+			if (this->GetLowerBound()->Equals(result_lower_new))
+			{
+				distinct = this->GetNumDistinct();
+				frequency = this->GetFrequency();
+			}
+			else // "this" is fully encompassed by bucket_other
+			{
+				GPOS_ASSERT(result_lower_new->Equals(bucket_other->GetLowerBound()));
+				distinct = bucket_other->GetNumDistinct();
+				frequency = bucket_other->GetFrequency();
+			}
+		}
+
+	}
+
 	if (result_upper_new->IsLessThan(this->GetUpperBound()))
 	{
 		// e.g [1, 150) + [50, 100)   -> [100, 150)
