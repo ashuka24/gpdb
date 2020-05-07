@@ -1071,6 +1071,81 @@ CBucket::MakeBucketMerged
 	GPOS_ASSERT(NULL == *bucket_new1);
 	GPOS_ASSERT(NULL == *bucket_new2);
 
+	// 2 main types of bucket merging:
+	// 		b1	|-------------|
+	//      b2           |------------|
+	//			|--------|
+	//          a   1    b
+	//                   |----|
+	//					 b	2 c
+	//						  |--------|
+	//						  c   3    d
+	//
+	// 		b1	|-------------|
+	//      b2     |------|
+	//
+	//
+
+	CPoint *a = CPoint::MinPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
+	CPoint *b = CPoint::MaxPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
+	CPoint *c = CPoint::MinPoint(this->GetUpperBound(), bucket_other->GetUpperBound());
+	CPoint *d = CPoint::MaxPoint(this->GetUpperBound(), bucket_other->GetUpperBound());
+
+	CBucket *lower_third;
+	CBucket *mid_third;
+	CBucket *upper_third;
+
+	CDouble lower_ratio(0.0);
+	CDouble upper_ratio(0.0);
+
+	// Calculate bucket 1
+	if (a->Equals(this->GetLowerBound()))  // bucket1 will only come from this
+	{
+		// frequency will be proportion of just this bucket
+		lower_ratio = this->GetOverlapPercentage(b);
+		CDouble freq = this->GetFrequency() * lower_ratio;
+		CDouble ndv(0.0);
+		lower_third = GPOS_NEW(mp) CBucket(a, b, this->IsLowerClosed() /* is_lower_closed */, false, freq, ndv);
+	}
+	else
+	{
+		GPOS_ASSERT(a->Equals(bucket_other->GetLowerBound())); // bucket1 will only come from bucket_other
+
+		lower_ratio = bucket_other->GetOverlapPercentage(b);
+		// frequency will be proportion of just bucket_other
+		CDouble freq = bucket_other->GetFrequency() * lower_ratio;
+		CDouble ndv(0.0);
+		lower_third = GPOS_NEW(mp) CBucket(a, b, bucket_other->IsLowerClosed() /* is_lower_closed */, false, freq, ndv);
+	}
+
+
+	// Calculate bucket 3
+	if (c->Equals(this->GetUpperBound()))  // bucket3 will only come from bucket_other
+	{
+		GPOS_ASSERT(bucket_other->Contains(c));
+		GPOS_ASSERT(bucket_other->GetUpperBound()->IsGreaterThanOrEqual(c));
+
+		CDouble distance = bucket_other->GetUpperBound()->Distance(c);
+		upper_ratio = distance/this->Width();
+		// frequency will be proportion of just bucket_other bucket
+		CDouble freq = bucket_other->GetFrequency() * upper_ratio;
+		CDouble ndv(0.0);
+		upper_third = GPOS_NEW(mp) CBucket(c, d, true /* is_lower_closed */, bucket_other->IsUpperClosed(), freq, ndv);
+	}
+	else
+	{
+		GPOS_ASSERT(this->Contains(c));
+		GPOS_ASSERT(this->GetUpperBound()->IsGreaterThanOrEqual(c));
+
+		CDouble distance = this->GetUpperBound()->Distance(c);
+		upper_ratio = distance/this->Width();
+		// frequency will be proportion of just this bucket
+		CDouble freq = this->GetFrequency() * upper_ratio;
+		CDouble ndv(0.0);
+		upper_third = GPOS_NEW(mp) CBucket(c, d, true /* is_lower_closed */, this->IsUpperClosed(), freq, ndv);
+	}
+
+
 	CPoint *result_lower_new = CPoint::MinPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
 	CPoint *result_upper_new = CPoint::MinPoint(this->GetUpperBound(), bucket_other->GetUpperBound());
 
