@@ -1072,19 +1072,25 @@ CBucket::MakeBucketMerged
 	GPOS_ASSERT(NULL == *bucket_new2);
 
 	// 2 main types of bucket merging:
-	// 		b1	|-------------|
-	//      b2           |------------|
-	//			|--------|
-	//          a   1    b
-	//                   |----|
-	//					 b	2 c
-	//						  |--------|
-	//						  c   3    d
+	// Option 1:
+	// this            |-------------|
+	// bucket_other             |-------------|
+	// will turn into:
+	//    b1           |--------|
+	//                 a        b
+	//    b2                    |----|
+	//					        b    c
+	//    b3                         |--------|
+	//						         c        d
 	//
-	// 		b1	|-------------|
-	//      b2     |------|
+	// Option 2:
+	// 	this           |-------------|
+	// bucket_other        |------|
 	//
-	//
+	// Option 3: // TODO: TAKE CARE OF THIS EDGE CASE
+	// 	this           |-------------|
+	// bucket_other    |-------------|
+	// and their respective reciprocals
 
 	CPoint *a = CPoint::MinPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
 	CPoint *b = CPoint::MaxPoint(this->GetLowerBound(), bucket_other->GetLowerBound());
@@ -1098,7 +1104,7 @@ CBucket::MakeBucketMerged
 	CDouble lower_ratio(0.0);
 	CDouble upper_ratio(0.0);
 
-	// Calculate bucket 1
+	// Calculate bucket 1 // take bounds into account here. what if this->IsLowerClosed = false?
 	if (a->Equals(this->GetLowerBound()))  // bucket1 will only come from this
 	{
 		// frequency will be proportion of just this bucket
@@ -1118,10 +1124,10 @@ CBucket::MakeBucketMerged
 		lower_third = GPOS_NEW(mp) CBucket(a, b, bucket_other->IsLowerClosed() /* is_lower_closed */, false, freq, ndv);
 	}
 
-
 	// Calculate bucket 3
 	if (c->Equals(this->GetUpperBound()))  // bucket3 will only come from bucket_other
 	{
+		// if c is the upper bound of this, then from c - d comes only from bucket_other
 		GPOS_ASSERT(bucket_other->Contains(c));
 		GPOS_ASSERT(bucket_other->GetUpperBound()->IsGreaterThanOrEqual(c));
 
