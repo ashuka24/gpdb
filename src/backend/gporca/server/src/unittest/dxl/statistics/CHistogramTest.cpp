@@ -322,7 +322,6 @@ CHistogramTest::EresUnittest_Merge()
 
 	CDouble output_rows2(0.0); // can be anywhere between 600 - 1600
 	CHistogram *result2 = histogram2->MakeUnionHistogramNormalize(600, histogram1, 1000, &output_rows2);
-	GPOS_ASSERT(output_rows1 == output_rows2);
 
 	{
 		CAutoTrace at(mp);
@@ -332,6 +331,7 @@ CHistogramTest::EresUnittest_Merge()
 		at.Os() << "Result 2: "<< output_rows2 << std::endl;
 	}
 
+	GPOS_ASSERT(output_rows1 == output_rows2);
 	GPOS_DELETE(histogram1);
 	GPOS_DELETE(histogram2);
 
