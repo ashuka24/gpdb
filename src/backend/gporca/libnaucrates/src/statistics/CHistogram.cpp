@@ -1566,7 +1566,8 @@ CHistogram::MakeUnionAllHistogramNormalize
 			GPOS_ASSERT(bucket1->Intersects(bucket2));
 			CBucket *bucket1_new = NULL;
 			CBucket *bucket2_new = NULL;
-			CBucket *merge_bucket = bucket1->MakeBucketMerged(m_mp, bucket2, rows, rows_other, &bucket1_new, &bucket2_new);
+			CDouble result_rows(0.0);
+			CBucket *merge_bucket = bucket1->MakeBucketMerged(m_mp, bucket2, rows, rows_other, &bucket1_new, &bucket2_new, &result_rows);
 			new_buckets->Append(merge_bucket);
 
 			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
@@ -1750,7 +1751,7 @@ CHistogram::MakeUnionHistogramNormalize
 			CBucket *bucket1_new = NULL;
 			CBucket *bucket2_new = NULL;
 			CBucket *merge_bucket = NULL;
-
+			CDouble result_rows(0.0);
 			merge_bucket = bucket1->MakeBucketMerged
 									(
 									m_mp,
@@ -1759,11 +1760,12 @@ CHistogram::MakeUnionHistogramNormalize
 									rows_other,
 									&bucket1_new,
 									&bucket2_new,
+									&result_rows,
 									false /* is_union_all */
 									);
 
 			// add the estimated number of rows in the merged bucket
-			num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * std::max(rows, rows_other)));
+			num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * result_rows));
 			histogram_buckets->Append(merge_bucket);
 
 			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
