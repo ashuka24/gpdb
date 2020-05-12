@@ -55,7 +55,7 @@ namespace gpnaucrates
 
 			// merge basic tests
 			static
-			GPOS_RESULT EresUnittest_Merge();
+			GPOS_RESULT EresUnittest_MergeUnion();
 
 	}; // class CHistogramTest
 }

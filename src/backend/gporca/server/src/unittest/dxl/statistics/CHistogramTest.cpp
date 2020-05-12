@@ -40,7 +40,7 @@ CHistogramTest::EresUnittest()
 		GPOS_UNITTEST_FUNC(CHistogramTest::EresUnittest_CHistogramBool),
 		GPOS_UNITTEST_FUNC(CHistogramTest::EresUnittest_Skew),
 		GPOS_UNITTEST_FUNC(CHistogramTest::EresUnittest_CHistogramValid),
-		GPOS_UNITTEST_FUNC(CHistogramTest::EresUnittest_Merge)
+		GPOS_UNITTEST_FUNC(CHistogramTest::EresUnittest_MergeUnion)
 		};
 
 	CAutoMemoryPool amp;
@@ -292,7 +292,7 @@ CHistogramTest::EresUnittest_Skew()
 
 // basis merge commutativity test
 GPOS_RESULT
-CHistogramTest::EresUnittest_Merge()
+CHistogramTest::EresUnittest_MergeUnion()
 {
 	// create memory pool
 	CAutoMemoryPool amp;
@@ -334,6 +334,8 @@ CHistogramTest::EresUnittest_Merge()
 	GPOS_ASSERT(output_rows1 == output_rows2);
 	GPOS_DELETE(histogram1);
 	GPOS_DELETE(histogram2);
+	GPOS_DELETE(result1);
+	GPOS_DELETE(result2);
 
 	return GPOS_OK;
 }
