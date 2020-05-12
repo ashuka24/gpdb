@@ -219,6 +219,8 @@ namespace gpnaucrates
 				return m_bucket_lower_bound->GetDatum()->StatsMappable();
 			}
 
+			BOOL Equals(const CBucket *bucket);
+
 			// generate a random data point within bucket boundaries
 			CDouble GetSample(ULONG *seed) const;
 
