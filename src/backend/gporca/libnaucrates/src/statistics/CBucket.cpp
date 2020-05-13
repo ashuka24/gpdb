@@ -1305,9 +1305,15 @@ CBucket::MakeBucketMerged
 	CBucket *result;
 	if (lower_third == NULL) // lower bounds of both buckets were the same, return only the combined bucket
 	{
-		a->AddRef();
-		c->AddRef();
-		result = GPOS_NEW(mp) CBucket (a, c, isLowerClosed, isUpperClosed, mid_freq, mid_ndv);
+		b->AddRef();
+		d->AddRef();
+		CDouble max_ndv = d->Distance(b);
+		CDouble freq = std::min(CDouble(1.0) , upper_third->GetFrequency() + mid_freq);
+		CDouble ndv = std::min(max_ndv, upper_third->GetNumDistinct() + mid_ndv);
+		result = GPOS_NEW(mp) CBucket (b, d, isLowerClosed, isUpperClosed, freq, ndv);
+		*bucket_new1 = NULL;
+		*bucket_new2 = NULL;
+		GPOS_DELETE(upper_third);
 	}
 	else if (upper_third == NULL) // the upper bounds of both buckets are the same, return only the combined bucket
 	{
