@@ -320,7 +320,7 @@ CHistogramTest::EresUnittest_MergeUnion()
 	CHistogram *result1 = histogram1->MakeUnionHistogramNormalize(1000, histogram2, 600, &output_rows1);
 
 
-	CDouble output_rows2(0.0); // can be anywhere between 600 - 1600
+	CDouble output_rows2(0.0);
 	CHistogram *result2 = histogram2->MakeUnionHistogramNormalize(600, histogram1, 1000, &output_rows2);
 
 	{

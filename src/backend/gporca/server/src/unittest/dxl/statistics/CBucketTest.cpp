@@ -400,14 +400,15 @@ CBucketTest::EresUnittest_CBucketMergeCommutativityUnion()
 
 	CBucket *bucket1_new1 = NULL;
 	CBucket *bucket2_new1 = NULL;
+	CDouble result_rows1(0.0);
 
-	CBucket *result1 = bucket1->MakeBucketMerged(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, false /*is_union_all*/);
+	CBucket *result1 = bucket1->MakeBucketMerged(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, &result_rows1, false /*is_union_all*/);
 
 
 	CBucket *bucket1_new2 = NULL;
 	CBucket *bucket2_new2 = NULL;
-	CDouble output_rows2(0.0); // can be anywhere between 600 - 1600
-	CBucket *result2 = bucket2->MakeBucketMerged(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, false /*is_union_all*/);
+	CDouble result_rows2(0.0);
+	CBucket *result2 = bucket2->MakeBucketMerged(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, &result_rows2, false /*is_union_all*/);
 
 	{
 		CAutoTrace at(mp);
@@ -454,14 +455,15 @@ CBucketTest::EresUnittest_CBucketMergeCommutativityUnionAll()
 
 	CBucket *bucket1_new1 = NULL;
 	CBucket *bucket2_new1 = NULL;
+	CDouble result_rows1(0.0);
 
-	CBucket *result1 = bucket1->MakeBucketMerged(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, true /*is_union_all*/);
+	CBucket *result1 = bucket1->MakeBucketMerged(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, &result_rows1, true /*is_union_all*/);
 
 
 	CBucket *bucket1_new2 = NULL;
 	CBucket *bucket2_new2 = NULL;
-	CDouble output_rows2(0.0); // can be anywhere between 600 - 1600
-	CBucket *result2 = bucket2->MakeBucketMerged(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, true /*is_union_all*/);
+	CDouble result_rows2(0.0);
+	CBucket *result2 = bucket2->MakeBucketMerged(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, &result_rows2, true /*is_union_all*/);
 
 	{
 		CAutoTrace at(mp);
