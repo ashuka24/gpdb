@@ -1532,6 +1532,8 @@ CHistogram::MakeUnionAllHistogramNormalize
 	)
 	const
 {
+	GPOS_ASSERT(NULL != histogram);
+
 	CBucketArray *new_buckets = GPOS_NEW(m_mp) CBucketArray(m_mp);
 	ULONG idx1 = 0; // index on buckets from this histogram
 	ULONG idx2 = 0; // index on buckets from other histogram
@@ -1568,7 +1570,10 @@ CHistogram::MakeUnionAllHistogramNormalize
 			CBucket *bucket2_new = NULL;
 			CDouble result_rows(0.0);
 			CBucket *merge_bucket = bucket1->MakeBucketMerged(m_mp, bucket2, rows, rows_other, &bucket1_new, &bucket2_new, &result_rows);
-			new_buckets->Append(merge_bucket);
+			if (merge_bucket != NULL)
+			{
+				new_buckets->Append(merge_bucket);
+			}
 
 			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);
@@ -1599,8 +1604,8 @@ CHistogram::MakeUnionAllHistogramNormalize
 
 	CDouble new_null_freq = (m_null_freq * rows + histogram->m_null_freq * rows_other) / rows_new;
 
-	CDouble distinct_remaining = std::max(m_distinct_remaining, histogram->m_distinct_remaining);
-	CDouble freq_remaining = (m_freq_remaining * rows + histogram->m_freq_remaining * rows_other) / rows_new;
+	CDouble distinct_remaining = std::max(m_distinct_remaining, histogram->GetDistinctRemain());
+	CDouble freq_remaining = (m_freq_remaining * rows + histogram->GetFreqRemain() * rows_other) / rows_new;
 
 	CHistogram *result_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, new_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
 	(void) result_histogram->NormalizeHistogram();
@@ -1765,8 +1770,11 @@ CHistogram::MakeUnionHistogramNormalize
 									);
 
 			// add the estimated number of rows in the merged bucket
-			num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * result_rows));
-			histogram_buckets->Append(merge_bucket);
+			if (merge_bucket != NULL)
+			{
+				num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * result_rows));
+				histogram_buckets->Append(merge_bucket);
+			}
 
 			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);

@@ -1083,7 +1083,7 @@ CBucket::MakeBucketMerged
 	CDouble rows, // total rows coming in for this histogram
 	CDouble rows_other, // total rows coming in for the other histogram
 	CBucket **bucket_new1, // return value
-	CBucket **bucket_new2, // return value:
+	CBucket **bucket_new2, // return value
 	CDouble *result_rows, // return value: frequency of returned bucket based off this value
 	BOOL is_union_all
 	)
@@ -1175,15 +1175,19 @@ CBucket::MakeBucketMerged
 
 		if (is_union_all)
 		{
+			// this is being encapsulated by other
 			CDouble freq = std::min(CDouble(1.0) , ( rows1 + rows2 ) / total_rows);
 			bucket_other->GetLowerBound()->AddRef();
 			bucket_other->GetUpperBound()->AddRef();
-			return GPOS_NEW(mp) CBucket (bucket_other->GetLowerBound(), bucket_other->GetUpperBound(),
+			*bucket_new2 = GPOS_NEW(mp) CBucket (bucket_other->GetLowerBound(), bucket_other->GetUpperBound(),
 										 bucket_other->IsLowerClosed(), bucket_other->IsUpperClosed(),
 										 freq, bucket_other->GetNumDistinct());
+			return NULL; // return null as there is no "merged" bucket to add to the new histogram
 		}
 		*result_rows = rows_other;
-		return bucket_other->MakeBucketCopy(mp);
+		*bucket_new2 = bucket_other->MakeBucketCopy(mp); // give this back to iterate through again
+		return NULL; // return null as there is no "merged" bucket to add to the new histogram
+
 	}
 	else if (bucket_other->IsSingleton())
 	{
@@ -1194,13 +1198,24 @@ CBucket::MakeBucketMerged
 			CDouble freq = std::min(CDouble(1.0) , ( rows1 + rows2 ) / total_rows);
 			this->GetLowerBound()->AddRef();
 			this->GetUpperBound()->AddRef();
-			return GPOS_NEW(mp) CBucket (this->GetLowerBound(), this->GetUpperBound(),
+			*bucket_new1 = GPOS_NEW(mp) CBucket (this->GetLowerBound(), this->GetUpperBound(),
 										 this->IsLowerClosed(), this->IsUpperClosed(),
 										 freq, this->GetNumDistinct());
+			return NULL; // return null as there is no "merged" bucket to add to the new histogram
 		}
 		*result_rows = rows;
-		return this->MakeBucketCopy(mp);
+		*bucket_new1 = this->MakeBucketCopy(mp);
+		return NULL; // return null as there is no "merged" bucket to add to the new histogram
 	}
+
+	// in the case that the two lower bounds are the same, we want to track which bucket gets encapsulated by the other
+	// so that we can return it appropriately
+	// For example:
+	//      this bucket (bucket1): |--------------|
+	//     other bucket (bucket2): |----|
+	// we want to return the result here as bucket1_new
+	BOOL return_as_this = true;
+
 	if (a->Equals(b)) // the two lower bounds are the same so there is no lower_third just middle and upper_third
 	{
 		isLowerClosed = this->IsLowerClosed() || bucket_other->IsLowerClosed();
@@ -1208,6 +1223,8 @@ CBucket::MakeBucketMerged
 		{
 			middle_ratio_this = 1;
 			middle_ratio_other = bucket_other->GetOverlapPercentage(c);
+
+			return_as_this = false;
 		}
 		else // bucket_other is completely encapsulated by this
 		{
@@ -1302,7 +1319,7 @@ CBucket::MakeBucketMerged
 	mid_ndv = std::min(max_ndv, (mid_ndv_low + mid_ndv_high) / CDouble(2.0));
 
 	// merge the lower bucket with the middle bucket if applicable
-	CBucket *result;
+	CBucket *result = NULL;
 	if (lower_third == NULL) // lower bounds of both buckets were the same, return only the combined bucket
 	{
 		b->AddRef();
@@ -1310,9 +1327,17 @@ CBucket::MakeBucketMerged
 		CDouble max_ndv = d->Distance(b);
 		CDouble freq = std::min(CDouble(1.0) , upper_third->GetFrequency() + mid_freq);
 		CDouble ndv = std::min(max_ndv, upper_third->GetNumDistinct() + mid_ndv);
-		result = GPOS_NEW(mp) CBucket (b, d, isLowerClosed, isUpperClosed, freq, ndv);
+		CBucket *combined = GPOS_NEW(mp) CBucket (b, d, isLowerClosed, isUpperClosed, freq, ndv);
 		*bucket_new1 = NULL;
 		*bucket_new2 = NULL;
+		if (return_as_this)
+		{
+			*bucket_new1 = combined;
+		}
+		else
+		{
+			*bucket_new2 = combined;
+		}
 		GPOS_DELETE(upper_third);
 	}
 	else if (upper_third == NULL) // the upper bounds of both buckets are the same, return only the combined bucket
