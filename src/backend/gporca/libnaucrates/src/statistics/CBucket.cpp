@@ -1205,14 +1205,14 @@ CBucket::MakeBucketMerged
 		return NULL; // return null as there is no "merged" bucket to add to the new histogram
 	}
 
-	BOOL return_as_this = true;
-	CDouble this_overlap_percentage(0.0); // percentage of this bucket that overlaps with bucket other
-	CDouble bucket_other_overlap_percentage(0.0); // percentage of bucket_other that overlaps with this
+	// in the case that the two lower bounds are the same, we want to track which bucket gets encapsulated by the other
+	BOOL set_bucket_new1 = true;
+	CDouble this_overlap_percentage(0.0);
+	CDouble bucket_other_overlap_percentage(0.0);
 	CDouble lower_rows(0.0);
 
 	if (a->Equals(b)) // the two lower bounds are the same so there is no lower_third just middle and upper_third
 	{
-		// in the case that the two lower bounds are the same, we want to track which bucket gets encapsulated by the other
 		// so that we can return it appropriately
 		// For example:
 		//      this bucket (bucket1): |--------------|
@@ -1224,7 +1224,7 @@ CBucket::MakeBucketMerged
 			this_overlap_percentage = 1;
 			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(c);
 
-			return_as_this = false;
+			set_bucket_new1 = false;
 		}
 		else // bucket_other is completely encapsulated by this
 		{
@@ -1275,7 +1275,7 @@ CBucket::MakeBucketMerged
 	}
 	else if (c->Equals(this->GetUpperBound()))  // bucket3 will only come from bucket_other
 	{
-		// if c is the upper bound of this, then from c - d comes only from bucket_other
+		// if c is the upper bound of this, then from c -> d comes only from bucket_other
 		GPOS_ASSERT(bucket_other->GetUpperBound()->IsGreaterThanOrEqual(c));
 		isUpperClosed = bucket_other->IsUpperClosed();
 
@@ -1298,10 +1298,10 @@ CBucket::MakeBucketMerged
 	}
 
 	// Calculate middle third which is a combination from both buckets:
-	CDouble rows_ratio1 = this_bucket_rows * this_overlap_percentage;
-	CDouble rows_ratio2 = bucket_other_rows * bucket_other_overlap_percentage;
-	CDouble ndv1 = this->GetNumDistinct() * this_overlap_percentage;
-	CDouble ndv2 = bucket_other->GetNumDistinct() * bucket_other_overlap_percentage;
+	CDouble mid_rows_this = this_bucket_rows * this_overlap_percentage;
+	CDouble mid_rows_other = bucket_other_rows * bucket_other_overlap_percentage;
+	CDouble mid_ndv_this = this->GetNumDistinct() * this_overlap_percentage;
+	CDouble mid_ndv_other = bucket_other->GetNumDistinct() * bucket_other_overlap_percentage;
 
 	// combine the two (and deal with union all)
 	CDouble mid_freq(0.0);
@@ -1310,17 +1310,17 @@ CBucket::MakeBucketMerged
 	// union all freq:
 	if (is_union_all)
 	{
-		mid_freq = std::min(CDouble(1.0) ,( rows_ratio1 + rows_ratio2 ) / total_rows);
+		mid_freq = std::min(CDouble(1.0) ,( mid_rows_this + mid_rows_other ) / total_rows);
 	}
 	else
 	{
-		mid_freq = std::min(CDouble(1.0) , std::max(rows_ratio1, rows_ratio2) / total_rows);
+		mid_freq = std::min(CDouble(1.0) , std::max(mid_rows_this, mid_rows_other) / total_rows);
 	}
 
-	CDouble mid_ndv_low = std::max(ndv1, ndv2);
-	CDouble mid_ndv_high = ndv1 + ndv2;
+//	CDouble mid_ndv_low = std::max(mid_ndv_this, mid_ndv_other);
+	CDouble mid_ndv_high = mid_ndv_this + mid_ndv_other;
 	CDouble max_ndv = c->Distance(b);
-	mid_ndv = std::min(max_ndv, (mid_ndv_low + mid_ndv_high) / CDouble(2.0));
+	mid_ndv = std::min(max_ndv, mid_ndv_high);
 
 	// merge the lower bucket with the middle bucket if applicable
 	CBucket *result = NULL;
@@ -1334,7 +1334,7 @@ CBucket::MakeBucketMerged
 		CBucket *combined = GPOS_NEW(mp) CBucket (b, d, isLowerClosed, isUpperClosed, freq, ndv);
 		*bucket_new1 = NULL;
 		*bucket_new2 = NULL;
-		if (return_as_this)
+		if (set_bucket_new1)
 		{
 			*bucket_new1 = combined;
 		}
