@@ -1609,7 +1609,6 @@ CHistogram::MakeUnionAllHistogramNormalize
 
 	CHistogram *result_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, new_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
 	(void) result_histogram->NormalizeHistogram();
-//	GPOS_ASSERT(result_histogram->IsValid());
 	return result_histogram;
 }
 
