@@ -4217,17 +4217,17 @@ select * from
    ->  Result
          ->  Result
    ->  Hash
-         ->  Merge Full Join
-               Merge Cond: (unique1 = id)
-               ->  Gather Motion 3:1  (slice1; segments: 3)
-                     Merge Key: unique1
+         ->  Gather Motion 3:1  (slice1; segments: 3)
+               ->  Merge Full Join
+                     Merge Cond: (unique1 = id)
                      ->  Sort
                            Sort Key: unique1
                            ->  Seq Scan on tenk1
-               ->  Sort
-                     Sort Key: id
-                     ->  Result
+                     ->  Sort
+                           Sort Key: id
                            ->  Result
+                                 ->  Result
+                                       ->  Result
  Optimizer: Pivotal Optimizer (GPORCA)
 (17 rows)
 
