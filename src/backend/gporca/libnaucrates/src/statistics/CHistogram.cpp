@@ -1575,7 +1575,7 @@ CHistogram::MakeUnionAllHistogramNormalize
 				new_buckets->Append(merge_bucket);
 			}
 
-			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
+//			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);
 			CleanupResidualBucket(bucket2, bucket2_is_residual);
 
@@ -1776,7 +1776,7 @@ CHistogram::MakeUnionHistogramNormalize
 				histogram_buckets->Append(merge_bucket);
 			}
 
-			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
+//			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);
 			CleanupResidualBucket(bucket2, bucket2_is_residual);
 
