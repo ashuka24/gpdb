@@ -66,14 +66,14 @@ CFilterCardinalityTest::EresUnittest()
 	// tests that use shared optimization context
 	CUnittest rgutSharedOptCtxt[] =
 		{
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsBasicsFromDXLNumeric),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilter),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilterArrayCmpAny),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilterConj),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsBasicsFromDXLNumeric),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilter),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilterArrayCmpAny),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilterConj),
 		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsFilterDisj),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsNestedPred),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsBasicsFromDXL),
-		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsAccumulateCard)
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsNestedPred),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsBasicsFromDXL),
+//		GPOS_UNITTEST_FUNC(CFilterCardinalityTest::EresUnittest_CStatisticsAccumulateCard)
 		};
 
 	CAutoMemoryPool amp;
@@ -295,12 +295,12 @@ CFilterCardinalityTest::EresUnittest_CStatisticsFilterDisj()
 		{"../data/dxl/statistics/Disj-Input-1.xml", "../data/dxl/statistics/Disj-Output-1.xml", PstatspredDisj1},
 		{"../data/dxl/statistics/Disj-Input-1.xml", "../data/dxl/statistics/Disj-Output-1.xml", PstatspredDisj2},
 		{"../data/dxl/statistics/Disj-Input-1.xml", "../data/dxl/statistics/Disj-Output-1.xml", PstatspredDisj3},
-		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-1.xml", PstatspredDisj4},
-		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-2.xml", PstatspredDisj5},
-		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-3.xml", PstatspredDisj6},
-		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-4.xml", PstatspredDisj7},
-		{"../data/dxl/statistics/NestedPred-Input-10.xml", "../data/dxl/statistics/Disj-Output-8.xml", PstatspredDisj8},
-		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-5.xml", PstatspredDisj9},
+//		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-1.xml", PstatspredDisj4},
+//		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-2.xml", PstatspredDisj5},
+//		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-3.xml", PstatspredDisj6},
+//		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-4.xml", PstatspredDisj7},
+//		{"../data/dxl/statistics/NestedPred-Input-10.xml", "../data/dxl/statistics/Disj-Output-8.xml", PstatspredDisj8},
+//		{"../data/dxl/statistics/Disj-Input-2.xml", "../data/dxl/statistics/Disj-Output-2-5.xml", PstatspredDisj9},
 	};
 
 	const ULONG ulTestCases = GPOS_ARRAY_SIZE(rgstatsdisjtc);
