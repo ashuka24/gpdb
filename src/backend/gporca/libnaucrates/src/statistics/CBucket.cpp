@@ -1211,9 +1211,6 @@ CBucket::MakeBucketMerged
 		}
 	}
 
-	BOOL isLowerClosed = true;
-	BOOL isUpperClosed = false;
-
 	// Calculate merged which is a combination from both buckets
 	// [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
 	// create the merged [5,10) bucket
@@ -1246,10 +1243,13 @@ CBucket::MakeBucketMerged
 	// create the merged bucket
 	maxLower->AddRef();
 	minUpper->AddRef();
+
+	BOOL isLowerClosed = this->IsLowerClosed() || bucket_other->IsLowerClosed();
+	BOOL isUpperClosed = false;
 	// if we are recreating a singleton bucket with new stats, update the upper bound
-	if (maxLower->Equals(minUpper))
+	if (maxLower->Equals(minUpper) || minUpper->Equals(maxUpper))
 	{
-		isUpperClosed = true;
+		isUpperClosed = this->IsUpperClosed() || bucket_other->IsUpperClosed();
 	}
 	middle_third = GPOS_NEW(mp) CBucket (maxLower, minUpper, isLowerClosed, isUpperClosed, merged_freq, merged_ndv);
 
@@ -1261,7 +1261,10 @@ CBucket::MakeBucketMerged
 			{
 				*bucket_new1 = upper_third;
 			}
-			*bucket_new2 = upper_third;
+			else
+			{
+				*bucket_new2 = upper_third;
+			}
 		}
 		return middle_third;
 	}
