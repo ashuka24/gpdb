@@ -95,7 +95,7 @@ namespace gpnaucrates
 			BOOL IsAfter(const CPoint *point) const;
 
 			// what percentage of bucket is covered by [lb,pp]
-			CDouble GetOverlapPercentage(const CPoint *point) const;
+			CDouble GetOverlapPercentage(const CPoint *point, BOOL include_point=true) const;
 
 			// frequency associated with bucket
 			CDouble GetFrequency() const

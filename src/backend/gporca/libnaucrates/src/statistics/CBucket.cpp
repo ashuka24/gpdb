@@ -161,12 +161,13 @@ CBucket::IsAfter
 CDouble
 CBucket::GetOverlapPercentage
 	(
-	const CPoint *point
+	 const CPoint *point,
+	 BOOL include_point
 	)
 	const
 {
 	// special case of upper bound equal to point
-	if (this->GetUpperBound()->IsLessThanOrEqual(point))
+	if ((this->GetUpperBound()->Equals(point) && include_point) || this->GetUpperBound()->IsLessThan(point))
 	{
 		return CDouble(1.0);
 	}
@@ -185,10 +186,25 @@ CBucket::GetOverlapPercentage
 	}
 
 	// general case, compute distance ratio
+	// distance is calculated assuming, one closed bound, one open bound
 	CDouble distance_upper = m_bucket_upper_bound->Distance(m_bucket_lower_bound);
 	GPOS_ASSERT(distance_upper > 0.0);
+	if (this->IsUpperClosed())
+	{
+		if (point->GetDatum()->IsDatumMappableToLINT())
+			distance_upper = std::max(CDouble(0.0), distance_upper + 1.0);
+		if (point->GetDatum()->IsDatumMappableToDouble())
+			distance_upper=std::max(CDouble(0.0), distance_upper + (CStatistics::Epsilon * 10));
+	}
 	CDouble distance_middle = point->Distance(m_bucket_lower_bound);
 	GPOS_ASSERT(distance_middle >= 0.0);
+	if (include_point)
+	{
+		if (point->GetDatum()->IsDatumMappableToLINT())
+			distance_middle = std::max(CDouble(0.0), distance_middle + 1.0);
+		if (point->GetDatum()->IsDatumMappableToDouble())
+			distance_middle=std::max(CDouble(0.0), distance_middle + (CStatistics::Epsilon * 10));
+	}
 
 	CDouble res = 1 / distance_upper;
 	if (distance_middle > 0.0)
@@ -1082,6 +1098,13 @@ CBucket::IsAfter
 //
 //
 //---------------------------------------------------------------------------
+
+// Assumption: For the union case, we assume that if there is overlap, the overlap for one bucket is a
+// subset of the other
+// Assumption: For frequency calculation of merged buckets, we assume that the rows in each table
+// are distinct. We also assume that one of the tables is a subset of the other.
+
+// t1  (1,100), (1,101),  t2:  (1,100)
 CBucket *
 CBucket::MakeBucketMerged
 	(
@@ -1170,13 +1193,13 @@ CBucket::MakeBucketMerged
 		if (this->GetLowerBound()->Equals(minLower))
 		{
 			lower_third = this->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			this_overlap_percentage = 1 - this->GetOverlapPercentage(maxLower);
+			this_overlap_percentage = 1 - this->GetOverlapPercentage(maxLower, false);
 		}
 		else
 		{
 			GPOS_ASSERT(bucket_other->GetLowerBound()->Equals(minLower));
 			lower_third = bucket_other->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			bucket_other_overlap_percentage = 1 - bucket_other->GetOverlapPercentage(maxLower);
+			bucket_other_overlap_percentage = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
 		}
 	}
 
@@ -1188,12 +1211,12 @@ CBucket::MakeBucketMerged
 		if (this_singleton)
 		{
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, false  /*include_lower*/);
-			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(maxLower);
+			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(maxLower, false);
 		}
 		else if (other_singleton)
 		{
 			upper_third = this->MakeBucketScaleLower(mp, minUpper, false /*include_lower*/);
-			this_overlap_percentage = this->GetOverlapPercentage(maxLower);
+			this_overlap_percentage = this->GetOverlapPercentage(maxLower, false);
 		}
 
 		// [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
@@ -1201,13 +1224,13 @@ CBucket::MakeBucketMerged
 		else if (this->GetUpperBound()->Equals(maxUpper))
 		{
 			upper_third = this->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
-			this_overlap_percentage = this->GetOverlapPercentage(maxLower);
+			this_overlap_percentage = this->GetOverlapPercentage(maxLower, false);
 		}
 		else
 		{
 			GPOS_ASSERT(bucket_other->GetUpperBound()->Equals(maxUpper));
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
-			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(maxLower);
+			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(maxLower, false);
 		}
 	}
 	else
@@ -1216,12 +1239,12 @@ CBucket::MakeBucketMerged
 		if (this->IsUpperClosed() && !bucket_other->IsUpperClosed())
 		{
 			upper_third = this->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
-			this_overlap_percentage = this->GetOverlapPercentage(minUpper);
+			this_overlap_percentage = this->GetOverlapPercentage(minUpper, false);
 		}
 		else if (bucket_other->IsUpperClosed() && !this->IsUpperClosed())
 		{
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
-			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(minUpper);
+			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(minUpper, false);
 		}
 	}
 
