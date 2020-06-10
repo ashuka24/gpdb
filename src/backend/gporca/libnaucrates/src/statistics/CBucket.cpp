@@ -1146,15 +1146,15 @@ CBucket::MakeBucketMerged
 		return GPOS_NEW(mp) CBucket (minLower, maxUpper, true, true, freq, ndv);
 	}
 
-	BOOL has_lower_third = true;
-	BOOL has_upper_third = true;
+	BOOL sameLowerBounds = false;
+	BOOL sameUpperBounds = false;
 	if (minLower->Equals(maxLower))
 	{
-		has_lower_third = false;
+		sameLowerBounds = true;
 	}
 	if (minUpper->Equals(maxUpper))
 	{
-		has_upper_third = false;
+		sameUpperBounds = true;
 	}
 
 	CDouble this_overlap_percentage(1.0);
@@ -1162,7 +1162,7 @@ CBucket::MakeBucketMerged
 
 	CBucket *lower_third = NULL;
 	// if a lower_third/upper_third exists, they come only from one bucket, so scale accordingly
-	if (has_lower_third)
+	if (!sameLowerBounds)
 	{
 		// [1,5] & [5,5] ==> [1,5) & [5,5]
 		// or [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
@@ -1181,7 +1181,7 @@ CBucket::MakeBucketMerged
 	}
 
 	CBucket *upper_third = NULL;
-	if (has_upper_third)
+	if (!sameUpperBounds)
 	{
 		// [1,1] & [1,5) ==> [1,1] & (1,5)
 		// return (1,5) as a residual
@@ -1208,6 +1208,20 @@ CBucket::MakeBucketMerged
 			GPOS_ASSERT(bucket_other->GetUpperBound()->Equals(maxUpper));
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
 			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(maxLower);
+		}
+	}
+	else
+	{
+		// [2,5) & [1,5]
+		if (this->IsUpperClosed() && !bucket_other->IsUpperClosed())
+		{
+			upper_third = this->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
+			this_overlap_percentage = this->GetOverlapPercentage(minUpper);
+		}
+		else if (bucket_other->IsUpperClosed() && !this->IsUpperClosed())
+		{
+			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
+			bucket_other_overlap_percentage = bucket_other->GetOverlapPercentage(minUpper);
 		}
 	}
 
@@ -1247,7 +1261,7 @@ CBucket::MakeBucketMerged
 	BOOL isLowerClosed = this->IsLowerClosed() || bucket_other->IsLowerClosed();
 	BOOL isUpperClosed = false;
 	// if we are recreating a singleton bucket with new stats, update the upper bound
-	if (maxLower->Equals(minUpper) || minUpper->Equals(maxUpper))
+	if (this_singleton || other_singleton)
 	{
 		isUpperClosed = this->IsUpperClosed() || bucket_other->IsUpperClosed();
 	}
@@ -1257,7 +1271,7 @@ CBucket::MakeBucketMerged
 	{
 		if (NULL != upper_third)
 		{
-			if (upper_third->GetUpperBound()->Equals(this->GetUpperBound()))
+			if (upper_third->GetUpperBound()->Equals(this->GetUpperBound()) && upper_third->IsUpperClosed() == this->IsUpperClosed())
 			{
 				*bucket_new1 = upper_third;
 			}
