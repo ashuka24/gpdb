@@ -1287,6 +1287,7 @@ CBucket::MakeBucketMerged
 	if (this_singleton || other_singleton)
 	{
 		isUpperClosed = this->IsUpperClosed() || bucket_other->IsUpperClosed();
+		merged_ndv = CDouble(1.0);
 	}
 	middle_third = GPOS_NEW(mp) CBucket (maxLower, minUpper, isLowerClosed, isUpperClosed, merged_freq, merged_ndv);
 
