@@ -96,7 +96,7 @@ CBucketTest::EresUnittest_CBucketInt4()
 	CCardinalityTestUtils::PrintBucket(mp, "b2", bucket2);
 
 	// overlap of [1,2) w.r.t [1,3) should be about 50%
-	CDouble overlap = bucket2->GetOverlapPercentage(point2);
+	CDouble overlap = bucket2->GetOverlapPercentage(point2, false /*include_point*/);
 	GPOS_RTL_ASSERT(0.49 <= overlap && overlap <= 0.51);
 
 	// subsumption
