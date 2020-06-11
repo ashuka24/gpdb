@@ -157,6 +157,15 @@ namespace gpnaucrates
 					ULONG end
 					);
 
+			// helper to combine histogram buckets to reduce total buckets
+			static
+			CBucketArray *CombineBuckets
+					(
+					CMemoryPool *mp,
+					CBucketArray *buckets,
+					ULONG desired_num_buckets
+					);
+
 			// check if we can compute NDVRemain for JOIN histogram for the given input histograms
 			static
 			BOOL CanComputeJoinNDVRemain(const CHistogram *histogram1, const CHistogram *histogram2);
