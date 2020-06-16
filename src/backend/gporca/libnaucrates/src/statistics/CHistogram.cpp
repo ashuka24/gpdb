@@ -1602,14 +1602,20 @@ CHistogram::MakeUnionAllHistogramNormalize
 
 	CDouble distinct_remaining = std::max(m_distinct_remaining, histogram->GetDistinctRemain());
 	CDouble freq_remaining = (m_freq_remaining * rows + histogram->GetFreqRemain() * rows_other) / rows_new;
+//	CHistogram *test_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, new_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
+	ULONG desired_num_buckets = std::max((ULONG) 100, std::max(numBuckets1, numBuckets2));
 
-	CBucketArray *result_buckets = new_buckets;//CombineBuckets(m_mp, new_buckets, std::max(numBuckets1, numBuckets2));
+	CBucketArray *result_buckets = CombineBuckets(m_mp, new_buckets, desired_num_buckets);
+
 	CHistogram *result_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, result_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
 	(void) result_histogram->NormalizeHistogram();
+//	(void) test_histogram->NormalizeHistogram();
 	GPOS_ASSERT(result_histogram->IsValid());
+//	GPOS_ASSERT(test_histogram->IsValid());
 
-//	new_buckets->Release();
+	new_buckets->Release();
 	return result_histogram;
+//	return test_histogram;
 }
 
 // add residual bucket in the union all operation to the array of buckets in the histogram
@@ -1671,53 +1677,100 @@ CHistogram::CombineBuckets
  )
 {
 	GPOS_ASSERT(desired_num_buckets >= 1 );
-	CBucketArray *result_buckets = GPOS_NEW(mp) CBucketArray(mp);
-	ULONG bucketsToCombine = buckets->Size() - desired_num_buckets;
 
-	CBucket *bucket1 = (*buckets)[0];
-	for (ULONG ul = 1; ul < buckets->Size(); ++ul)
+	if (buckets->Size() <= desired_num_buckets)
 	{
-		// calculate the ratios for each value
-		CBucket *bucket2 = (*buckets)[ul];
-
-		CDouble freq1 = bucket1->GetFrequency();
-		CDouble ndv1 = bucket1->GetNumDistinct();
-		CDouble width1 = bucket1->GetUpperBound()->Width(
-														 bucket1->GetLowerBound(),
-														 bucket1->IsLowerClosed(),
-														 bucket1->IsUpperClosed()
-														 );
-		CDouble freq2 = bucket2->GetFrequency();
-		CDouble ndv2 = bucket2->GetNumDistinct();
-		CDouble width2 = bucket2->GetUpperBound()->Width(
-														 bucket2->GetLowerBound(),
-														 bucket2->IsLowerClosed(),
-														 bucket2->IsUpperClosed()
-														 );
-
-		CDouble freqNdv1 = freq1/ndv1;
-		CDouble freqNdv2 = freq2/ndv2;
-
-		CDouble freqWidth1 = freq1/width1;
-		CDouble freqWidth2 = freq2/width2;
-
-		// ideal merge is when the ratios = 0
-		CDouble ratio1 = (freqNdv1-freqNdv2).Absolute();
-		CDouble ratio2 = (freqWidth1-freqWidth2).Absolute();
-
-		if ((ratio1 + ratio2) < 1)
-		{
-			// if they are close to 0, then it means they are similar
-			// we probably want to get rid of these
-		}
-
-		// cycle through to get each of the boundaries
-		bucket1 = bucket2;
-		ratio1 = bucketsToCombine;
+		buckets->AddRef();
+		return buckets;
 	}
 
-	GPOS_ASSERT(result_buckets->Size() == desired_num_buckets && bucketsToCombine);
+	CBucketArray *result_buckets = GPOS_NEW(mp) CBucketArray(mp);
+	ULONG bucketsToCombine = buckets->Size() - desired_num_buckets;
+	KHeap<SBoundaryArray, SBoundary>* ratios = GPOS_NEW(mp) KHeap<SBoundaryArray, SBoundary> (mp, bucketsToCombine);
 
+	for (ULONG ul = 0; ul < buckets->Size() - 1; ++ul)
+	{
+		// calculate the ratios for each value
+		CBucket *bucket1 = (*buckets)[ul];
+		CBucket *bucket2 = (*buckets)[ul+1];
+		// only consider buckets that have matching boundaries
+		if (bucket1->GetUpperBound()->Equals(bucket2->GetLowerBound()))
+		{
+			CDouble freq1 = bucket1->GetFrequency();
+			CDouble ndv1 = bucket1->GetNumDistinct();
+			CDouble width1 = bucket1->GetUpperBound()->Width(
+															 bucket1->GetLowerBound(),
+															 bucket1->IsLowerClosed(),
+															 bucket1->IsUpperClosed()
+															 );
+			CDouble freq2 = bucket2->GetFrequency();
+			CDouble ndv2 = bucket2->GetNumDistinct();
+			CDouble width2 = bucket2->GetUpperBound()->Width(
+															 bucket2->GetLowerBound(),
+															 bucket2->IsLowerClosed(),
+															 bucket2->IsUpperClosed()
+															 );
+
+			CDouble freqNdv1 = freq1/ndv1;
+			CDouble freqNdv2 = freq2/ndv2;
+
+			CDouble freqWidth1 = freq1/width1;
+			CDouble freqWidth2 = freq2/width2;
+
+			// ideal merge is when the ratios = 0
+			CDouble ratio1 = (freqNdv1-freqNdv2).Absolute();
+			CDouble ratio2 = (freqWidth1-freqWidth2).Absolute();
+
+			SBoundary *elem = GPOS_NEW(mp) SBoundary (ul, ratio1 + ratio2);
+			ratios->Insert(elem);
+		}
+	}
+
+	// tracking the index locations that need to be removed
+	CBitSet *indexes_to_merge = GPOS_NEW(mp) CBitSet(mp);
+	SBoundary *candidate_to_remove;
+	while (NULL != (candidate_to_remove = ratios->RemoveBestElement()))
+	{
+		indexes_to_merge->ExchangeSet(candidate_to_remove->m_boundary_index);
+		GPOS_DELETE(candidate_to_remove);
+	}
+
+	// go through the heap and remove as necessary
+	for (ULONG ul = 0; ul < buckets->Size(); ++ul)
+	{
+		CBucket *bucket = (*buckets)[ul];
+		ULONG end_bucket_ix = ul;
+		CDouble merged_frequencies = bucket->GetFrequency();
+		CDouble merged_ndvs = bucket->GetNumDistinct();
+
+		while (indexes_to_merge->Get(end_bucket_ix))
+		{
+			end_bucket_ix++;
+			merged_frequencies = merged_frequencies + (*buckets)[end_bucket_ix]->GetFrequency();
+			merged_ndvs = merged_ndvs + (*buckets)[end_bucket_ix]->GetNumDistinct();
+		}
+		if (end_bucket_ix > ul)
+		{
+			CBucket *merged = NULL;
+			CBucket* bucket1 = (*buckets)[ul];
+			CBucket* bucket2 = (*buckets)[end_bucket_ix];
+
+			// merge the bucket
+			bucket1->GetLowerBound()->AddRef();
+			bucket2->GetUpperBound()->AddRef();
+			merged = GPOS_NEW(mp) CBucket(bucket1->GetLowerBound(), bucket2->GetUpperBound(), bucket1->IsLowerClosed(), bucket2->IsUpperClosed(), merged_frequencies, merged_ndvs);
+			result_buckets->Append(merged);
+			ul = end_bucket_ix;
+		}
+		else
+		{
+			result_buckets->Append(bucket->MakeBucketCopy(mp));
+		}
+	}
+
+	GPOS_ASSERT(result_buckets->Size() == desired_num_buckets);
+	indexes_to_merge->Release();
+	ratios->Release();
 	return result_buckets;
 }
 
@@ -1891,7 +1944,9 @@ CHistogram::MakeUnionHistogramNormalize
 	CDouble null_freq = num_null_rows / *num_output_rows ;
 	CDouble NDV_remain_freq =  NDV_remain_num_rows / *num_output_rows ;
 
-	CBucketArray *result_buckets = histogram_buckets;//CombineBuckets(m_mp, histogram_buckets, std::max(numBuckets1, numBuckets2));
+	ULONG desired_num_buckets = std::max((ULONG) 100, std::max(numBuckets1, numBuckets2));
+
+	CBucketArray *result_buckets = CombineBuckets(m_mp, histogram_buckets, desired_num_buckets);
 	CHistogram *result_histogram = GPOS_NEW(m_mp) CHistogram
 									(
 									m_mp,
@@ -1905,7 +1960,7 @@ CHistogram::MakeUnionHistogramNormalize
 
 	// clean up
 	num_tuples_per_bucket->Release();
-//	histogram_buckets->Release();
+	histogram_buckets->Release();
 	GPOS_ASSERT(result_histogram->IsValid());
 	return result_histogram;
 }
