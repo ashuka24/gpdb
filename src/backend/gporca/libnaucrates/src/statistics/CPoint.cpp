@@ -218,6 +218,7 @@ CPoint::Width
 	{
 		width = std::max(CDouble(0.0), width - adjust);
 	}
+	// if [this, point) or (this, point] no adjustment needed
 	return width;
 }
 //---------------------------------------------------------------------------
