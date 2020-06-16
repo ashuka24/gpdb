@@ -190,25 +190,6 @@ CBucket::GetOverlapPercentage
 	CDouble distance_upper = m_bucket_upper_bound->Width(m_bucket_lower_bound, m_is_lower_closed, m_is_upper_closed);
 	GPOS_ASSERT(distance_upper > 0.0);
 	CDouble distance_middle = point->Width(m_bucket_lower_bound, m_is_lower_closed, include_point);
-	// if distance_upper == 1, then you have something like [1, 2) or (1, 2]
-	// and point is less than the upper_bound, therefore your distance_middle should never be 1
-//	if (distance_upper <= CDouble(2.0))
-//	{
-//		if (point->GetDatum()->IsDatumMappableToDouble())
-//		{
-//			if (distance_upper == distance_middle)
-//				distance_middle = distance_middle - CStatistics::Epsilon * 10;
-//			else
-//				distance_middle = distance_middle + CStatistics::Epsilon * 10;
-//		}
-//		if (point->GetDatum()->IsDatumMappableToLINT())
-//		{
-//			if (distance_upper == distance_middle)
-//				distance_middle = distance_middle - CDouble(1.0);
-//			else
-//				distance_middle = distance_middle + CDouble(0.0);
-//		}
-//	}
 	GPOS_ASSERT(distance_middle >= 0.0);
 
 	CDouble res = 1 / distance_upper;
@@ -1184,6 +1165,10 @@ CBucket::MakeBucketMerged
 		sameUpperBounds = true;
 	}
 
+	CDouble this_overlap_lower(0.0);
+	CDouble this_overlap_upper(0.0);
+	CDouble bucket_other_overlap_lower(0.0);
+	CDouble bucket_other_overlap_upper(0.0);
 	CBucket *lower_third = NULL;
 	// if a lower_third exists, it comes only from one bucket so return it and let merge do the rest
 	if (!sameLowerBounds)
@@ -1194,29 +1179,18 @@ CBucket::MakeBucketMerged
 		if (this->GetLowerBound()->Equals(minLower))
 		{
 			lower_third = this->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-//			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false);
+			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false);
 			*result_rows = rows;
-			*bucket_new1 = this->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);
-			*bucket_new2 = bucket_other->MakeBucketCopy(mp);
-			return lower_third;
 		}
 		else
 		{
 			GPOS_ASSERT(bucket_other->GetLowerBound()->Equals(minLower));
 			lower_third = bucket_other->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-//			bucket_other_overlap_lower = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
+			bucket_other_overlap_lower = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
 			*result_rows = rows_other;
-			*bucket_new2 = bucket_other->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);;
-			*bucket_new1 = this->MakeBucketCopy(mp);
-			return lower_third;
 		}
 	}
 
-
-	CDouble this_overlap_lower(0.0);
-	CDouble this_overlap_upper(0.0);
-	CDouble bucket_other_overlap_lower(0.0);
-	CDouble bucket_other_overlap_upper(0.0);
 	CBucket *upper_third = NULL;
 	if (!sameUpperBounds)
 	{
@@ -1270,16 +1244,31 @@ CBucket::MakeBucketMerged
 		}
 	}
 
+	// in the case of [1,10) & [5,5]
+	// overlap_lower would cover [1,5]
+	// overlap_upper would cover [5,10)
+	// the true overlap is 1 - overlap_lower + overlap_upper
+	CDouble this_overlap = this_overlap_upper + this_overlap_lower;
+	CDouble other_overlap = bucket_other_overlap_upper + bucket_other_overlap_lower;
+	if (this_overlap > CDouble(1.0))
+	{
+		this_overlap = this_overlap - CDouble(1.0);
+	}
+	if (other_overlap > CDouble(1.0))
+	{
+		other_overlap = other_overlap - CDouble(1.0);
+	}
+
 	// Calculate merged which is a combination from both buckets
 	// [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
 	// create the merged [5,10) bucket
 	// [1, 10) & [1, 10] ==> [1,10]
-	// ???
+
 	CBucket *middle_third = NULL;
-	CDouble merged_rows_this = this_bucket_rows * (this_overlap_lower + this_overlap_upper);
-	CDouble merged_rows_other = bucket_other_rows * (bucket_other_overlap_lower + bucket_other_overlap_upper);
-	CDouble merged_ndv_this = this->GetNumDistinct() * (this_overlap_lower + this_overlap_upper);
-	CDouble merged_ndv_other = bucket_other->GetNumDistinct() * (bucket_other_overlap_lower + bucket_other_overlap_upper);
+	CDouble merged_rows_this = this_bucket_rows * this_overlap;
+	CDouble merged_rows_other = bucket_other_rows * other_overlap;
+	CDouble merged_ndv_this = this->GetNumDistinct() * this_overlap;
+	CDouble merged_ndv_other = bucket_other->GetNumDistinct() * other_overlap;
 
 	// combine the two (and deal with union all)
 	CDouble merged_freq(0.0);
