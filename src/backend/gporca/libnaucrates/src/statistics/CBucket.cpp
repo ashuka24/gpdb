@@ -1184,13 +1184,8 @@ CBucket::MakeBucketMerged
 		sameUpperBounds = true;
 	}
 
-	CDouble this_overlap_lower(0.0);
-	CDouble this_overlap_upper(0.0);
-	CDouble bucket_other_overlap_lower(0.0);
-	CDouble bucket_other_overlap_upper(0.0);
-
 	CBucket *lower_third = NULL;
-	// if a lower_third/upper_third exists, they come only from one bucket, so scale accordingly
+	// if a lower_third exists, it comes only from one bucket so return it and let merge do the rest
 	if (!sameLowerBounds)
 	{
 		// [1,5] & [5,5] ==> [1,5) & [5,5]
@@ -1199,18 +1194,29 @@ CBucket::MakeBucketMerged
 		if (this->GetLowerBound()->Equals(minLower))
 		{
 			lower_third = this->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false);
+//			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false);
 			*result_rows = rows;
+			*bucket_new1 = this->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);
+			*bucket_new2 = bucket_other->MakeBucketCopy(mp);
+			return lower_third;
 		}
 		else
 		{
 			GPOS_ASSERT(bucket_other->GetLowerBound()->Equals(minLower));
 			lower_third = bucket_other->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			bucket_other_overlap_lower = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
+//			bucket_other_overlap_lower = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
 			*result_rows = rows_other;
+			*bucket_new2 = bucket_other->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);;
+			*bucket_new1 = this->MakeBucketCopy(mp);
+			return lower_third;
 		}
 	}
 
+
+	CDouble this_overlap_lower(0.0);
+	CDouble this_overlap_upper(0.0);
+	CDouble bucket_other_overlap_lower(0.0);
+	CDouble bucket_other_overlap_upper(0.0);
 	CBucket *upper_third = NULL;
 	if (!sameUpperBounds)
 	{
