@@ -1570,12 +1570,8 @@ CHistogram::MakeUnionAllHistogramNormalize
 			CBucket *bucket2_new = NULL;
 			CDouble result_rows(0.0);
 			CBucket *merge_bucket = bucket1->MakeBucketMerged(m_mp, bucket2, rows, rows_other, &bucket1_new, &bucket2_new, &result_rows);
-			if (merge_bucket != NULL)
-			{
-				new_buckets->Append(merge_bucket);
-			}
+			new_buckets->Append(merge_bucket);
 
-//			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);
 			CleanupResidualBucket(bucket2, bucket2_is_residual);
 
@@ -1834,13 +1830,9 @@ CHistogram::MakeUnionHistogramNormalize
 									);
 
 			// add the estimated number of rows in the merged bucket
-			if (merge_bucket != NULL)
-			{
-				num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * result_rows));
-				histogram_buckets->Append(merge_bucket);
-			}
+			num_tuples_per_bucket->Append(GPOS_NEW(m_mp) CDouble(merge_bucket->GetFrequency() * result_rows));
+			histogram_buckets->Append(merge_bucket);
 
-//			GPOS_ASSERT(NULL == bucket1_new || NULL == bucket2_new);
 			CleanupResidualBucket(bucket1, bucket1_is_residual);
 			CleanupResidualBucket(bucket2, bucket2_is_residual);
 
