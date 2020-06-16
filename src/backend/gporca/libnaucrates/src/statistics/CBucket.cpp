@@ -1256,6 +1256,12 @@ CBucket::MakeBucketMerged
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, true /*include_lower*/);
 			bucket_other_overlap_upper = bucket_other->GetOverlapPercentage(minUpper, false);
 		}
+		// [1,5) & [1,5) or (1,5] & (1,5] OR [1,5] & [1,5]
+		else
+		{
+			this_overlap_upper = CDouble(1.0);
+			bucket_other_overlap_upper = CDouble(1.0);
+		}
 	}
 
 	// Calculate merged which is a combination from both buckets

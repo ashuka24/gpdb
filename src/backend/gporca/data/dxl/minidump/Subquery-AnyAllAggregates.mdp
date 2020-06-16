@@ -578,7 +578,7 @@
                           <dxl:Ident ColId="34" ColName="ColRef_0034" TypeMdid="0.20.1.0"/>
                           <dxl:Ident ColId="32" ColName="ColRef_0032" TypeMdid="0.20.1.0"/>
                         </dxl:Comparison>
-                        <dxl:ConstValue TypeMdid="0.16.1.0" IsNull="true" IsByValue="true"/>
+                        <dxl:ConstValue TypeMdid="0.16.1.0" IsNull="true"/>
                         <dxl:ConstValue TypeMdid="0.16.1.0" Value="true"/>
                       </dxl:If>
                       <dxl:ConstValue TypeMdid="0.16.1.0" Value="false"/>
