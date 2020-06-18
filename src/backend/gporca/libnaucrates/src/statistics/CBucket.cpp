@@ -192,6 +192,10 @@ CBucket::GetOverlapPercentage
 	CDouble distance_middle = point->Width(m_bucket_lower_bound, m_is_lower_closed, include_point);
 	GPOS_ASSERT(distance_middle >= 0.0);
 
+	if (distance_upper == distance_middle && !include_point)
+	{
+		distance_middle = distance_middle - CDouble(1.0);
+	}
 	CDouble res = 1 / distance_upper;
 	res = res * distance_middle;
 
