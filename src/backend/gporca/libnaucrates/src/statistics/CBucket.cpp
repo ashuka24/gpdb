@@ -1179,16 +1179,36 @@ CBucket::MakeBucketMerged
 		// return [1,5) as a residual
 		if (this->GetLowerBound()->Equals(minLower))
 		{
-			lower_third = this->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false /*include_point*/);
+			CDouble lower_percent = this->GetOverlapPercentage(maxLower, false /*include_point*/);
+			this_overlap_lower = 1 - lower_percent;
 			*result_rows = rows;
+			CDouble lower_freq = this->GetFrequency() * lower_percent;
+			CDouble lower_ndv = this->GetNumDistinct() * lower_percent;
+			if (is_union_all)
+			{
+				lower_freq = (lower_freq * rows) / total_rows;
+			}
+
+			this->GetLowerBound()->AddRef();
+			maxLower->AddRef();
+			lower_third = GPOS_NEW(mp) CBucket(this->GetLowerBound(), maxLower, this->IsLowerClosed(), false /*include_upper*/, lower_freq, lower_ndv);
 		}
 		else
 		{
 			GPOS_ASSERT(bucket_other->GetLowerBound()->Equals(minLower));
-			lower_third = bucket_other->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			bucket_other_overlap_lower = 1 - bucket_other->GetOverlapPercentage(maxLower, false);
-			*result_rows = rows_other;
+			CDouble lower_percent = bucket_other->GetOverlapPercentage(maxLower, false /*include_point*/);
+			bucket_other_overlap_lower = 1 - lower_percent;
+			*result_rows = rows;
+			CDouble lower_freq = bucket_other->GetFrequency() * lower_percent;
+			CDouble lower_ndv = bucket_other->GetNumDistinct() * lower_percent;
+			if (is_union_all)
+			{
+				lower_freq = (lower_freq * rows_other) / total_rows;
+			}
+
+			bucket_other->GetLowerBound()->AddRef();
+			maxLower->AddRef();
+			lower_third = GPOS_NEW(mp) CBucket(bucket_other->GetLowerBound(), maxLower, bucket_other->IsLowerClosed(), false /*include_upper*/, lower_freq, lower_ndv);
 		}
 	}
 
@@ -1312,20 +1332,25 @@ CBucket::MakeBucketMerged
 			if (upper_third->GetUpperBound()->Equals(this->GetUpperBound()) && upper_third->IsUpperClosed() == this->IsUpperClosed())
 			{
 				*bucket_new1 = upper_third;
+
+				if (is_union_all)
+				{
+					GPOS_ASSERT(middle_third->GetFrequency() * total_rows + upper_third->GetFrequency() * rows  <= this_bucket_rows + bucket_other_rows + CStatistics::Epsilon);
+				}
 			}
 			else
 			{
 				*bucket_new2 = upper_third;
-			}
-			if (is_union_all)
-			{
-				GPOS_ASSERT(middle_third->GetFrequency() + upper_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
 
+				if (is_union_all)
+				{
+					GPOS_ASSERT(middle_third->GetFrequency() * total_rows + upper_third->GetFrequency() * rows_other  <= this_bucket_rows + bucket_other_rows + CStatistics::Epsilon);
+				}
 			}
 		}
 		if (is_union_all)
 		{
-			GPOS_ASSERT(middle_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
+			GPOS_ASSERT(middle_third->GetFrequency() * total_rows <= this_bucket_rows + bucket_other_rows + CStatistics::Epsilon);
 
 		}
 		return middle_third;
@@ -1333,23 +1358,30 @@ CBucket::MakeBucketMerged
 	else if (NULL == upper_third)
 	{
 		*bucket_new1 = middle_third;
-		GPOS_ASSERT(lower_third->GetFrequency() + middle_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
+		if (is_union_all)
+		{
+			GPOS_ASSERT(lower_third->GetFrequency() * total_rows + middle_third->GetFrequency() * total_rows <= this_bucket_rows + bucket_other_rows + CStatistics::Epsilon);
+		}
 	}
 	else if (upper_third->GetUpperBound()->Equals(this->GetUpperBound()))
 	{
 		*bucket_new1 = upper_third;
 		*bucket_new2 = middle_third;
+		if (is_union_all)
+		{
+			GPOS_ASSERT(lower_third->GetFrequency() * total_rows + middle_third->GetFrequency() * total_rows  + upper_third->GetFrequency() * rows <= this_bucket_rows + bucket_other_rows+ CStatistics::Epsilon);
+		}
 	}
 	else
 	{
 		*bucket_new1 = middle_third;
 		*bucket_new2 = upper_third;
+		if (is_union_all)
+		{
+			GPOS_ASSERT(lower_third->GetFrequency() * total_rows + middle_third->GetFrequency() * total_rows  + upper_third->GetFrequency() * rows_other <= this_bucket_rows + bucket_other_rows + CStatistics::Epsilon);
+		}
 	}
 
-	if (is_union_all && NULL != upper_third)
-	{
-		GPOS_ASSERT(lower_third->GetFrequency() + middle_third->GetFrequency() + upper_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
-	}
 	return lower_third;
 }
 
