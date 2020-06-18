@@ -1533,6 +1533,8 @@ CHistogram::MakeUnionAllHistogramNormalize
 	const
 {
 	GPOS_ASSERT(NULL != histogram);
+	GPOS_ASSERT(this->IsValid());
+	GPOS_ASSERT(histogram->IsValid());
 
 	CBucketArray *new_buckets = GPOS_NEW(m_mp) CBucketArray(m_mp);
 	ULONG idx1 = 0; // index on buckets from this histogram
@@ -1684,6 +1686,16 @@ CHistogram::CombineBuckets
 		return buckets;
 	}
 
+#ifdef GPOS_DEBUG
+	CDouble start_frequency(0.0);
+	for (ULONG ul = 0; ul < buckets->Size(); ++ul)
+	{
+		CBucket *bucket = (*buckets)[ul];
+		start_frequency = start_frequency + bucket->GetFrequency();
+	}
+	GPOS_ASSERT(start_frequency <= CDouble(1.0) + CStatistics::Epsilon);
+#endif
+
 	CBucketArray *result_buckets = GPOS_NEW(mp) CBucketArray(mp);
 	ULONG bucketsToCombine = buckets->Size() - desired_num_buckets;
 	KHeap<SBoundaryArray, SBoundary>* ratios = GPOS_NEW(mp) KHeap<SBoundaryArray, SBoundary> (mp, bucketsToCombine);
@@ -1694,8 +1706,10 @@ CHistogram::CombineBuckets
 		CBucket *bucket1 = (*buckets)[ul];
 		CBucket *bucket2 = (*buckets)[ul+1];
 		// only consider buckets that have matching boundaries
-		if (bucket1->GetUpperBound()->Equals(bucket2->GetLowerBound()))
+		if (bucket1->GetUpperBound()->Equals(bucket2->GetLowerBound()) &&
+			bucket1->IsUpperClosed() ^ bucket2->IsLowerClosed())
 		{
+			GPOS_ASSERT(bucket1->IsUpperClosed() ^ bucket2->IsLowerClosed());
 			CDouble freq1 = bucket1->GetFrequency();
 			CDouble ndv1 = bucket1->GetNumDistinct();
 			CDouble width1 = bucket1->GetUpperBound()->Width(
@@ -1768,6 +1782,17 @@ CHistogram::CombineBuckets
 		}
 	}
 
+#ifdef GPOS_DEBUG
+	CDouble end_frequency(0.0);
+	for (ULONG ul = 0; ul < result_buckets->Size(); ++ul)
+	{
+		CBucket *bucket = (*result_buckets)[ul];
+		end_frequency = end_frequency + bucket->GetFrequency();
+	}
+
+	GPOS_ASSERT(start_frequency - end_frequency <= CDouble(0.0) + CStatistics::Epsilon);
+#endif
+
 	GPOS_ASSERT(result_buckets->Size() == desired_num_buckets);
 	indexes_to_merge->Release();
 	ratios->Release();
@@ -1826,6 +1851,8 @@ CHistogram::MakeUnionHistogramNormalize
 	const
 {
 	GPOS_ASSERT(NULL != other_histogram);
+	GPOS_ASSERT(this->IsValid());
+	GPOS_ASSERT(other_histogram->IsValid());
 
 	ULONG idx1 = 0; // index on buckets from this histogram
 	ULONG idx2 = 0; // index on buckets from other histogram

@@ -193,10 +193,7 @@ CBucket::GetOverlapPercentage
 	GPOS_ASSERT(distance_middle >= 0.0);
 
 	CDouble res = 1 / distance_upper;
-	if (distance_middle > 0.0)
-	{
-		res = res * distance_middle;
-	}
+	res = res * distance_middle;
 
 	return CDouble(std::min(res.Get(), DOUBLE(1.0)));
 
@@ -1179,7 +1176,7 @@ CBucket::MakeBucketMerged
 		if (this->GetLowerBound()->Equals(minLower))
 		{
 			lower_third = this->MakeBucketScaleUpper(mp, maxLower, false /*include_upper*/);
-			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false);
+			this_overlap_lower = 1 - this->GetOverlapPercentage(maxLower, false /*include_point*/);
 			*result_rows = rows;
 		}
 		else
@@ -1202,11 +1199,13 @@ CBucket::MakeBucketMerged
 		{
 			upper_third = bucket_other->MakeBucketScaleLower(mp, minUpper, false  /*include_lower*/);
 			bucket_other_overlap_upper = bucket_other->GetOverlapPercentage(minUpper, true);
+			this_overlap_upper = CDouble(1.0);
 		}
 		else if (other_singleton)
 		{
 			upper_third = this->MakeBucketScaleLower(mp, minUpper, false /*include_lower*/);
 			this_overlap_upper = this->GetOverlapPercentage(minUpper, true);
+			bucket_other_overlap_upper = CDouble(1.0);
 		}
 
 		// [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
@@ -1314,12 +1313,23 @@ CBucket::MakeBucketMerged
 			{
 				*bucket_new2 = upper_third;
 			}
+			if (is_union_all)
+			{
+				GPOS_ASSERT(middle_third->GetFrequency() + upper_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
+
+			}
+		}
+		if (is_union_all)
+		{
+			GPOS_ASSERT(middle_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
+
 		}
 		return middle_third;
 	}
 	else if (NULL == upper_third)
 	{
 		*bucket_new1 = middle_third;
+		GPOS_ASSERT(lower_third->GetFrequency() + middle_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
 	}
 	else if (upper_third->GetUpperBound()->Equals(this->GetUpperBound()))
 	{
@@ -1332,6 +1342,10 @@ CBucket::MakeBucketMerged
 		*bucket_new2 = upper_third;
 	}
 
+	if (is_union_all && NULL != upper_third)
+	{
+		GPOS_ASSERT(lower_third->GetFrequency() + middle_third->GetFrequency() + upper_third->GetFrequency() <= (this_bucket_rows + bucket_other_rows)/ total_rows);
+	}
 	return lower_third;
 }
 
