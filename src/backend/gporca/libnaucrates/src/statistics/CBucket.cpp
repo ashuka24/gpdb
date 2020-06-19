@@ -1314,9 +1314,9 @@ CBucket::MakeBucketMerged
 	merged_ndv = std::min(max_merged_ndv, merged_ndv_high);
 
 	// if we are recreating a singleton bucket with new stats, update the upper bound
-	if (this_singleton || other_singleton)
+	if (this_singleton || other_singleton || minUpper->Equals(maxLower))
 	{
-		isUpperClosed = this->IsUpperClosed() || bucket_other->IsUpperClosed();
+		isUpperClosed = true;
 		merged_ndv = CDouble(1.0);
 	}
 
