@@ -190,23 +190,14 @@ CPoint::Width
 {
 	// default to a non zero constant for overlap computation
 	CDouble width = CDouble(1.0);
+	CDouble adjust = CDouble(0.0);
 	GPOS_ASSERT(NULL != point);
 	if (m_datum->StatsAreComparable(point->m_datum))
 	{
 		// default case [this, point) or (this, point]
 		width = CDouble(m_datum->GetStatsDistanceFrom(point->m_datum));
-	}
-
-	CDouble adjust = CDouble(0.0);
-//	if (m_datum->IsDatumMappableToLINT())
-//	{
 		adjust = CDouble(1.0);
-//	}
-//	else
-//	{
-//		GPOS_ASSERT(m_datum->IsDatumMappableToDouble());
-//		adjust = CStatistics::Epsilon * 10;
-//	}
+	}
 
 	// case [this, point]
 	if (include_upper && include_lower)

@@ -1609,20 +1609,15 @@ CHistogram::MakeUnionAllHistogramNormalize
 
 	CDouble distinct_remaining = std::max(m_distinct_remaining, histogram->GetDistinctRemain());
 	CDouble freq_remaining = (m_freq_remaining * rows + histogram->GetFreqRemain() * rows_other) / rows_new;
-//	CHistogram *test_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, new_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
+
 	ULONG desired_num_buckets = std::max((ULONG) 100, std::max(numBuckets1, numBuckets2));
-
 	CBucketArray *result_buckets = CombineBuckets(m_mp, new_buckets, desired_num_buckets);
-
 	CHistogram *result_histogram = GPOS_NEW(m_mp) CHistogram(m_mp, result_buckets, true /*is_well_defined*/, new_null_freq, distinct_remaining, freq_remaining);
 	(void) result_histogram->NormalizeHistogram();
-//	(void) test_histogram->NormalizeHistogram();
 	GPOS_ASSERT(result_histogram->IsValid());
-//	GPOS_ASSERT(test_histogram->IsValid());
 
 	new_buckets->Release();
 	return result_histogram;
-//	return test_histogram;
 }
 
 // add residual bucket in the union all operation to the array of buckets in the histogram
