@@ -1198,7 +1198,7 @@ CBucket::MakeBucketMerged
 			GPOS_ASSERT(bucket_other->GetLowerBound()->Equals(minLower));
 			CDouble lower_percent = bucket_other->GetOverlapPercentage(maxLower, false /*include_point*/);
 			bucket_other_overlap_lower = 1 - lower_percent;
-			*result_rows = rows;
+			*result_rows = rows_other;
 			CDouble lower_freq = bucket_other->GetFrequency() * lower_percent;
 			CDouble lower_ndv = bucket_other->GetNumDistinct() * lower_percent;
 			if (is_union_all)
