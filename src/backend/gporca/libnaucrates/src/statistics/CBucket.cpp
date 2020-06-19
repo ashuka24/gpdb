@@ -192,10 +192,6 @@ CBucket::GetOverlapPercentage
 	CDouble distance_middle = point->Width(m_bucket_lower_bound, m_is_lower_closed, include_point);
 	GPOS_ASSERT(distance_middle >= 0.0);
 
-	if (distance_upper == distance_middle && !include_point)
-	{
-		distance_middle = distance_middle - CDouble(1.0);
-	}
 	CDouble res = 1 / distance_upper;
 	res = res * distance_middle;
 
@@ -1172,7 +1168,7 @@ CBucket::MakeBucketMerged
 	CDouble bucket_other_overlap_upper(0.0);
 	CBucket *lower_third = NULL;
 	// if a lower_third exists, it comes only from one bucket so return it and let merge do the rest
-	if (!sameLowerBounds)
+	if (!minLower->Equals(maxLower))
 	{
 		// [1,5] & [5,5] ==> [1,5) & [5,5]
 		// or [1, 10) & [5, 20) ==> [1,5) & [5,10) & [10,20)
@@ -1187,11 +1183,16 @@ CBucket::MakeBucketMerged
 			if (is_union_all)
 			{
 				lower_freq = (lower_freq * rows) / total_rows;
+				*result_rows = total_rows;
 			}
 
 			this->GetLowerBound()->AddRef();
 			maxLower->AddRef();
 			lower_third = GPOS_NEW(mp) CBucket(this->GetLowerBound(), maxLower, this->IsLowerClosed(), false /*include_upper*/, lower_freq, lower_ndv);
+
+			*bucket_new1 = this->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);
+			*bucket_new2 = bucket_other->MakeBucketCopy(mp);
+			return lower_third;
 		}
 		else
 		{
@@ -1204,11 +1205,16 @@ CBucket::MakeBucketMerged
 			if (is_union_all)
 			{
 				lower_freq = (lower_freq * rows_other) / total_rows;
+				*result_rows = total_rows;
 			}
 
 			bucket_other->GetLowerBound()->AddRef();
 			maxLower->AddRef();
 			lower_third = GPOS_NEW(mp) CBucket(bucket_other->GetLowerBound(), maxLower, bucket_other->IsLowerClosed(), false /*include_upper*/, lower_freq, lower_ndv);
+
+			*bucket_new2 = bucket_other->MakeBucketScaleLower(mp, maxLower, true /*include_lower*/);
+			*bucket_new1 = this->MakeBucketCopy(mp);
+			return lower_third;
 		}
 	}
 

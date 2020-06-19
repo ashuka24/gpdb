@@ -198,15 +198,15 @@ CPoint::Width
 	}
 
 	CDouble adjust = CDouble(0.0);
-	if (m_datum->IsDatumMappableToLINT())
-	{
+//	if (m_datum->IsDatumMappableToLINT())
+//	{
 		adjust = CDouble(1.0);
-	}
-	else
-	{
-		GPOS_ASSERT(m_datum->IsDatumMappableToDouble());
-		adjust = CStatistics::Epsilon * 10;
-	}
+//	}
+//	else
+//	{
+//		GPOS_ASSERT(m_datum->IsDatumMappableToDouble());
+//		adjust = CStatistics::Epsilon * 10;
+//	}
 
 	// case [this, point]
 	if (include_upper && include_lower)
