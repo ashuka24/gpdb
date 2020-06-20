@@ -4212,9 +4212,9 @@ select * from
   on (xx.id = coalesce(yy.id));
                       QUERY PLAN                      
 ------------------------------------------------------------------
- Gather Motion 3:1  (slice2; segments: 3)
-   ->  Hash Left Join
-         Hash Cond: (id = COALESCE(id))
+ Hash Left Join
+   Hash Cond: (id = COALESCE(id))
+   ->  Result
          ->  Result
    ->  Hash
          ->  Gather Motion 3:1  (slice1; segments: 3)
