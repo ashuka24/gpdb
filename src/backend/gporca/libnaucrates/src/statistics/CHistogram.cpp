@@ -642,7 +642,12 @@ CHistogram::IsValid
 	const
 {
 	// frequencies should not add up to more than 1.0
-	if (GetFrequency() > CDouble(1.0) + CStatistics::Epsilon * 50)
+	// since we round up for column statistics, it's possible for histograms to be slightly over 1.
+	// ex: 26 buckets evenly split gives freq of 0.03846153846. ORCA receives this as 0.038462
+	// giving a total frequency of 1.000012.
+	// At most, we would be overestimating by 0.5 freq per bucket, so give (num_buckets / 2)
+	// We also give an additional bit for internal rounding within ORCA calculations.
+	if (GetFrequency() > CDouble(1.0) + (CStatistics::Epsilon * GetNumBuckets()/2 + 1))
 	{
 		return false;
 	}
