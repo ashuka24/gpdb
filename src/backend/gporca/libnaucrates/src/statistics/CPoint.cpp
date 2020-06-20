@@ -12,6 +12,7 @@
 #include "gpos/base.h"
 #include "naucrates/statistics/CPoint.h"
 #include "gpopt/mdcache/CMDAccessor.h"
+#include "naucrates/statistics/CStatistics.h"
 
 using namespace gpnaucrates;
 using namespace gpopt;
@@ -170,6 +171,47 @@ CPoint::Distance
 	return CDouble(1.0);
 }
 
+//---------------------------------------------------------------------------
+//	@function:
+//		CPoint::Width
+//
+//	@doc:
+//		Distance between two points, taking bounds into account
+//
+//---------------------------------------------------------------------------
+CDouble
+CPoint::Width
+	(
+	const CPoint *point,
+	BOOL include_lower,
+	BOOL include_upper
+	)
+	const
+{
+	// default to a non zero constant for overlap computation
+	CDouble width = CDouble(1.0);
+	CDouble adjust = CDouble(0.0);
+	GPOS_ASSERT(NULL != point);
+	if (m_datum->StatsAreComparable(point->m_datum))
+	{
+		// default case [this, point) or (this, point]
+		width = CDouble(m_datum->GetStatsDistanceFrom(point->m_datum));
+		adjust = CDouble(1.0);
+	}
+
+	// case [this, point]
+	if (include_upper && include_lower)
+	{
+		width = width + adjust;
+	}
+	// case (this, point)
+	else if (!include_upper && !include_lower)
+	{
+		width = std::max(CDouble(0.0), width - adjust);
+	}
+	// if [this, point) or (this, point] no adjustment needed
+	return width;
+}
 //---------------------------------------------------------------------------
 //	@function:
 //		CPoint::OsPrint
