@@ -1698,7 +1698,7 @@ CHistogram::CombineBuckets
 
 	CBucketArray *result_buckets = GPOS_NEW(mp) CBucketArray(mp);
 	ULONG bucketsToCombine = buckets->Size() - desired_num_buckets;
-	KHeap<SBoundaryArray, SBoundary>* ratios = GPOS_NEW(mp) KHeap<SBoundaryArray, SBoundary> (mp, bucketsToCombine);
+	CKHeap<SBoundaryArray, SBoundary>* ratios = GPOS_NEW(mp) CKHeap<SBoundaryArray, SBoundary> (mp, bucketsToCombine);
 
 	for (ULONG ul = 0; ul < buckets->Size() - 1; ++ul)
 	{
