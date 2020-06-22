@@ -50,6 +50,8 @@ CBucketTest::EresUnittest()
 		GPOS_UNITTEST_FUNC(CBucketTest::EresUnittest_CBucketScale),
 		GPOS_UNITTEST_FUNC(CBucketTest::EresUnittest_CBucketDifference),
 		GPOS_UNITTEST_FUNC(CBucketTest::EresUnittest_CBucketIntersect),
+		GPOS_UNITTEST_FUNC(CBucketTest::EresUnittest_CBucketMergeCommutativityUnion),
+		GPOS_UNITTEST_FUNC(CBucketTest::EresUnittest_CBucketMergeCommutativityUnionAll),
 		};
 
 	CAutoMemoryPool amp;
@@ -78,13 +80,15 @@ CBucketTest::EresUnittest_CBucketInt4()
 	CPoint *point1 = CTestUtils::PpointInt4(mp, 1);
 	CPoint *point2 = CTestUtils::PpointInt4(mp, 2);
 	CPoint *point3 = CTestUtils::PpointInt4(mp, 3);
+	CPoint *point4 = CTestUtils::PpointInt4(mp, 4);
+	CPoint *point10 = CTestUtils::PpointInt4(mp, 10);
 
 	// bucket [1,1]
 	CBucket *bucket1 = CCardinalityTestUtils::PbucketIntegerClosedLowerBound(mp, 1, 1, CDouble(1.0), CDouble(1.0));
 	CCardinalityTestUtils::PrintBucket(mp, "b1", bucket1);
 
 	GPOS_RTL_ASSERT_MSG(bucket1->Contains(point1), "[1,1] must contain 1");
-	GPOS_RTL_ASSERT_MSG(CDouble(1.0) == bucket1->GetOverlapPercentage(point1),
+	GPOS_RTL_ASSERT_MSG(CDouble(1.0) == bucket1->GetOverlapPercentage(point1, true /*include_point*/),
 						"overlap of 1 in [1,1] must 1.0");
 
 	GPOS_RTL_ASSERT_MSG(!bucket1->Contains(point2), "[1,1] must not contain 2");
@@ -94,8 +98,32 @@ CBucketTest::EresUnittest_CBucketInt4()
 	CCardinalityTestUtils::PrintBucket(mp, "b2", bucket2);
 
 	// overlap of [1,2) w.r.t [1,3) should be about 50%
-	CDouble overlap = bucket2->GetOverlapPercentage(point2);
+	CDouble overlap = bucket2->GetOverlapPercentage(point2, false /*include_point*/);
 	GPOS_RTL_ASSERT(0.49 <= overlap && overlap <= 0.51);
+
+	// bucket [1,10)
+	CBucket *bucket3 = GPOS_NEW(mp) CBucket(CTestUtils::PpointInt4(mp, 1), CTestUtils::PpointInt4(mp, 10), true /* is_lower_closed */, true /* is_upper_closed */, CDouble(1.0), CDouble(10.0));
+	CCardinalityTestUtils::PrintBucket(mp, "b3", bucket3);
+	// bucket (1, 5)
+	CBucket *bucket4 = GPOS_NEW(mp) CBucket(CTestUtils::PpointInt4(mp, 1), CTestUtils::PpointInt4(mp, 5), false /* is_lower_closed */, false /* is_upper_closed */, CDouble(1.0), CDouble(5.0));	CCardinalityTestUtils::PrintBucket(mp, "b4", bucket4);
+	// bucket [1, 5)
+	CBucket *bucket5 = GPOS_NEW(mp) CBucket(CTestUtils::PpointInt4(mp, 1), CTestUtils::PpointInt4(mp, 5), true /* is_lower_closed */, false /* is_upper_closed */, CDouble(1.0), CDouble(5.0));	CCardinalityTestUtils::PrintBucket(mp, "b5", bucket5);
+
+	// overlap of [1,4) w.r.t [1,10] should be about 30%
+	CDouble overlap_open = bucket3->GetOverlapPercentage(point4, false /*include_point*/);
+	GPOS_RTL_ASSERT(0.29 <= overlap_open && overlap_open <= 0.31);
+	// overlap of [1,4] w.r.t [1,10] should be about 40%
+	CDouble overlap_closed = bucket3->GetOverlapPercentage(point4, true /*include_point*/);
+	GPOS_RTL_ASSERT(0.39 <= overlap_closed && overlap_closed <= 0.41);
+	// overlap of [1,10) w.r.t [1,10] should be about 90%
+	CDouble overlap_bound = bucket3->GetOverlapPercentage(point10, false /*include_point*/);
+	GPOS_RTL_ASSERT(0.89 <= overlap_bound && overlap_bound <= 0.91);
+	// overlap of (1,3) w.r.t (1,5) should be about 33%
+	CDouble overlap_open2 = bucket4->GetOverlapPercentage(point3, false /*include_point*/);
+	GPOS_RTL_ASSERT(0.32 <= overlap_open2 && overlap_open2 <= 0.34);
+	// overlap of [1,3) w.r.t [1,5) should be about 50%
+	CDouble overlap_closed2 = bucket5->GetOverlapPercentage(point3, false /*include_point*/);
+	GPOS_RTL_ASSERT(0.49 <= overlap_closed2 && overlap_closed2 <= 0.51);
 
 	// subsumption
 	GPOS_RTL_ASSERT(bucket1->Subsumes(bucket1));
@@ -118,8 +146,13 @@ CBucketTest::EresUnittest_CBucketInt4()
 	point1->Release();
 	point2->Release();
 	point3->Release();
+	point4->Release();
+	point10->Release();
 	GPOS_DELETE(bucket1);
 	GPOS_DELETE(bucket2);
+	GPOS_DELETE(bucket3);
+	GPOS_DELETE(bucket4);
+	GPOS_DELETE(bucket5);
 	GPOS_DELETE(pbucket3);
 	GPOS_DELETE(pbucket4);
 
@@ -382,5 +415,114 @@ CBucketTest::FMatchBucketBoundary
 	return false;
 }
 
+// basic merge commutativity test for union
+GPOS_RESULT
+CBucketTest::EresUnittest_CBucketMergeCommutativityUnion()
+{
+	// create memory pool
+	CAutoMemoryPool amp;
+	CMemoryPool *mp = amp.Pmp();
+
+	// 1000 rows
+	CBucket *bucket1 = CCardinalityTestUtils::PbucketIntegerClosedLowerBound(mp, 0, 100, CDouble(0.6), CDouble(100.0));
+
+	// 600 rows
+	CBucket *bucket2 = CCardinalityTestUtils::PbucketIntegerClosedLowerBound(mp, 50, 150, CDouble(0.3), CDouble(100.0));
+
+	CBucket *bucket1_new1 = NULL;
+	CBucket *bucket2_new1 = NULL;
+	CDouble result_rows1(0.0);
+
+	CBucket *result1 = bucket1->SplitAndMergeBuckets(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, &result_rows1, false /*is_union_all*/);
+
+
+	CBucket *bucket1_new2 = NULL;
+	CBucket *bucket2_new2 = NULL;
+	CDouble result_rows2(0.0);
+	CBucket *result2 = bucket2->SplitAndMergeBuckets(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, &result_rows2, false /*is_union_all*/);
+
+	{
+		CAutoTrace at(mp);
+		result1->OsPrint(at.Os());
+		result2->OsPrint(at.Os());
+	}
+
+	GPOS_ASSERT(result1->Equals(result2));
+
+	if (NULL != bucket1_new1)
+	{
+		GPOS_ASSERT(bucket1_new1->Equals(bucket2_new2));
+	}
+	else if (NULL != bucket2_new1)
+	{
+		GPOS_ASSERT(bucket2_new1->Equals(bucket1_new2));
+	}
+
+	GPOS_DELETE(bucket1);
+	GPOS_DELETE(bucket2);
+	GPOS_DELETE(result1);
+	GPOS_DELETE(result2);
+	GPOS_DELETE(bucket1_new1);
+	GPOS_DELETE(bucket2_new1);
+	GPOS_DELETE(bucket1_new2);
+	GPOS_DELETE(bucket2_new2);
+
+	return GPOS_OK;
+}
+
+// basic merge commutativity test for union all
+GPOS_RESULT
+CBucketTest::EresUnittest_CBucketMergeCommutativityUnionAll()
+{
+	// create memory pool
+	CAutoMemoryPool amp;
+	CMemoryPool *mp = amp.Pmp();
+
+	// 1000 rows
+	CBucket *bucket1 = CCardinalityTestUtils::PbucketIntegerClosedLowerBound(mp, 0, 100, CDouble(0.6), CDouble(100.0));
+
+	// 600 rows
+	CBucket *bucket2 = CCardinalityTestUtils::PbucketIntegerClosedLowerBound(mp, 50, 150, CDouble(0.3), CDouble(100.0));
+
+	CBucket *bucket1_new1 = NULL;
+	CBucket *bucket2_new1 = NULL;
+	CDouble result_rows1(0.0);
+
+	CBucket *result1 = bucket1->SplitAndMergeBuckets(mp, bucket2, 1000, 600, &bucket1_new1, &bucket2_new1, &result_rows1, true /*is_union_all*/);
+
+
+	CBucket *bucket1_new2 = NULL;
+	CBucket *bucket2_new2 = NULL;
+	CDouble result_rows2(0.0);
+	CBucket *result2 = bucket2->SplitAndMergeBuckets(mp, bucket1, 600, 1000, &bucket1_new2, &bucket2_new2, &result_rows2, true /*is_union_all*/);
+
+	{
+		CAutoTrace at(mp);
+		result1->OsPrint(at.Os());
+		result2->OsPrint(at.Os());
+	}
+
+	GPOS_ASSERT(result1->Equals(result2));
+
+	if (NULL != bucket1_new1)
+	{
+		GPOS_ASSERT(bucket1_new1->Equals(bucket2_new2));
+	}
+	else if (NULL != bucket2_new1)
+	{
+		GPOS_ASSERT(bucket2_new1->Equals(bucket1_new2));
+	}
+
+	GPOS_DELETE(bucket1);
+	GPOS_DELETE(bucket2);
+	GPOS_DELETE(result1);
+	GPOS_DELETE(result2);
+	GPOS_DELETE(bucket1_new1);
+	GPOS_DELETE(bucket2_new1);
+	GPOS_DELETE(bucket1_new2);
+	GPOS_DELETE(bucket2_new2);
+
+	return GPOS_OK;
+}
 // EOF
 

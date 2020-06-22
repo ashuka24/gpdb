@@ -95,7 +95,7 @@ namespace gpnaucrates
 			BOOL IsAfter(const CPoint *point) const;
 
 			// what percentage of bucket is covered by [lb,pp]
-			CDouble GetOverlapPercentage(const CPoint *point) const;
+			CDouble GetOverlapPercentage(const CPoint *point, BOOL include_point=true) const;
 
 			// frequency associated with bucket
 			CDouble GetFrequency() const
@@ -201,8 +201,8 @@ namespace gpnaucrates
 			// return a copy of the bucket with updated frequency based on the new total number of rows
 			CBucket *MakeBucketUpdateFrequency(CMemoryPool *mp, CDouble rows_old, CDouble rows_new);
 
-			// Merge with another bucket and return leftovers
-			CBucket *MakeBucketMerged
+			// Attempt a merge with another bucket and return leftovers
+			CBucket *SplitAndMergeBuckets
 					(
 					CMemoryPool *mp,
 					CBucket *bucket_other,
@@ -210,6 +210,7 @@ namespace gpnaucrates
 					CDouble rows_other,
 					CBucket **bucket1_new,
 					CBucket **bucket2_new,
+					CDouble *result_rows,
 					BOOL is_union_all = true
 					);
 
@@ -218,6 +219,8 @@ namespace gpnaucrates
 			{
 				return m_bucket_lower_bound->GetDatum()->StatsMappable();
 			}
+
+			BOOL Equals(const CBucket *bucket);
 
 			// generate a random data point within bucket boundaries
 			CDouble GetSample(ULONG *seed) const;
