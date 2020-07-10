@@ -69,7 +69,7 @@ CPointTest::EresUnittest_CPointInt4()
 	GPOS_RTL_ASSERT_MSG(point1->IsLessThanOrEqual(point2), "1 <= 2");
 	GPOS_RTL_ASSERT_MSG(point2->IsGreaterThanOrEqual(point2), "2 >= 2");
 
-	CDouble dDistance = point2->Distance(point1);
+	CDouble dDistance = point2->Width(point1, true /*is_lower_closed*/, false /*is_upper_closed*/);
 
 	// should be 1.0
 	GPOS_RTL_ASSERT_MSG(0.99 < dDistance

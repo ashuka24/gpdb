@@ -76,9 +76,6 @@ namespace gpnaucrates
 			// greater than or equals
 			BOOL IsGreaterThanOrEqual(const CPoint *) const;
 
-			// distance between two points
-			CDouble Distance(const CPoint *) const;
-
 			// distance between two points, taking bounds into account
 			CDouble Width(const CPoint *, BOOL include_lower, BOOL include_upper) const;
 

@@ -883,7 +883,7 @@ CBucket::MakeBucketIntersect
 				}
 			}
 
-			distance_new = upper_new->Distance(lower_new);
+			distance_new = upper_new->Width(lower_new, lower_new_is_closed, upper_new_is_closed);
 		}
 
 		// TODO: , May 1 2013, distance function for data types such as bpchar/varchar
@@ -966,7 +966,7 @@ CBucket::Width() const
 	}
 	else
 	{
-		return m_bucket_upper_bound->Distance(m_bucket_lower_bound);
+		return m_bucket_upper_bound->Width(m_bucket_lower_bound, m_is_lower_closed, m_is_upper_closed);
 	}
 }
 

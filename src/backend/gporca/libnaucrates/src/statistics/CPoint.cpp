@@ -145,17 +145,6 @@ CPoint::IsGreaterThanOrEqual
 	return (this->IsGreaterThan(point) || this->Equals(point));
 }
 
-// Distance between two points, assuming closed lower bound and open upper bound
-CDouble
-CPoint::Distance
-	(
-	const CPoint *point
-	)
-	const
-{
-	return Width(point, true /*include_lower*/, false /*include_upper*/);
-}
-
 // Distance between two points, taking bounds into account
 // this" is usually the higher value and "point" is the lower value
 // [0,5) would return 5, [0,5] would return 6 and (0,5) would return 4
